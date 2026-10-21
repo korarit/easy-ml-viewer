@@ -9,6 +9,7 @@ from app.presentation.endpoints.dataset_query_endpoints import router as dataset
 from app.presentation.endpoints.evaluation_endpoints import router as evaluation_router
 from app.presentation.endpoints.mapping_endpoints import router as mapping_router
 from app.presentation.endpoints.model_endpoints import router as model_router
+from app.presentation.endpoints.playback_endpoints import router as playback_router
 from app.presentation.endpoints.projection_endpoints import router as projection_router
 from app.presentation.endpoints.stage3d_endpoints import router as stage3d_router
 from app.presentation.endpoints.system_endpoints import router as system_router
@@ -22,3 +23,4 @@ api_router.include_router(mapping_router)
 api_router.include_router(evaluation_router)
 api_router.include_router(stage3d_router)
 api_router.include_router(projection_router)
+api_router.include_router(playback_router)
