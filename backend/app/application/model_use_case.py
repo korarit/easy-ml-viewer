@@ -18,10 +18,11 @@ from app.domains.model_engine.schema_detector import UniversalSchemaDetector
 from app.domains.model_engine.value_objects import TaskType
 from app.infrastructure.ml_loaders.joblib_model_repository import JoblibModelRepository
 
-# Ensure built-in Phase 03/04/18/19 adapters self-register on import.
+# Ensure built-in Phase 03/04/18/19/20 adapters self-register on import.
 from app.domains.model_engine.adapters.linear import linear_regression_adapter as _linear_adapter  # noqa: F401
 from app.domains.model_engine.adapters.linear import logistic_regression_adapter as _logistic_adapter  # noqa: F401
 from app.domains.model_engine.adapters.linear import regularized as _regularized_adapter  # noqa: F401
+from app.domains.model_engine.adapters.linear import elasticnet as _elasticnet_adapter  # noqa: F401
 
 _ALLOWED_MODEL_SUFFIXES = {".joblib", ".pkl", ".pickle"}
 _ALLOWED_SAMPLE_SUFFIXES = {".joblib", ".pkl", ".pickle"}

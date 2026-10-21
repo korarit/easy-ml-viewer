@@ -10,8 +10,10 @@ from app.domains.model_engine.adapters.linear.regularized import (
     RegularizedLinearAdapter,
     RidgeClassifierAdapter,
 )
+from app.domains.model_engine.adapters.linear.elasticnet import ElasticNetAdapter
 
 __all__ = [
+    "ElasticNetAdapter",
     "LinearRegressionAdapter",
     "LogisticRegressionAdapter",
     "RegularizedLinearAdapter",
