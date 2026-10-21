@@ -6,6 +6,7 @@ import { GlobalErrorBoundary } from './core/components/GlobalErrorBoundary';
 import { useSystemStore } from './core/store/useSystemStore';
 import { API_BASE_URL } from './core/api/client';
 import { DatasetStepView } from './domains/dataset/DatasetStepView';
+import { ModelStepView } from './domains/model_engine/ModelStepView';
 
 const STEP_COPY: Record<number, { title: string; body: string }> = {
   1: { title: 'Step 1 · Dataset', body: 'CSV / XLSX / Parquet ingestion lands here in Phase 02.' },
@@ -114,6 +115,8 @@ export default function App() {
         <main className="flex min-h-0 flex-1 items-stretch justify-center overflow-auto">
           {activeStep === 1 ? (
             <DatasetStepView />
+          ) : activeStep === 2 ? (
+            <ModelStepView />
           ) : (
           <section
             className="m-6 w-full max-w-xl self-center rounded-lg p-6"
