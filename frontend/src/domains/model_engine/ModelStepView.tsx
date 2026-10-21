@@ -5,6 +5,7 @@ import { ModelArchitectureCard } from './components/ModelArchitectureCard';
 import { ModelFeatureSchemaTable } from './components/ModelFeatureSchemaTable';
 import { HyperparameterAccordion } from './components/HyperparameterAccordion';
 import { LinearSliceInspector } from './components/LinearSliceInspector';
+import { LogisticInspectorPanel } from './components/LogisticInspectorPanel';
 import { useModelStore } from './store/useModelStore';
 import { useSystemStore } from '../../core/store/useSystemStore';
 
@@ -54,6 +55,7 @@ export function ModelStepView() {
       <ModelFeatureSchemaTable />
       <HyperparameterAccordion />
       <LinearSliceInspector />
+      <LogisticInspectorPanel />
 
       <div className="flex justify-between">
         <button
