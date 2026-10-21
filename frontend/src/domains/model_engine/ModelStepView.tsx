@@ -11,6 +11,7 @@ import { ElasticNetInspectorPanel } from './components/ElasticNetInspectorPanel'
 import { SgdMarginInspectorPanel } from './components/SgdMarginInspectorPanel';
 import { KnnRadarInspectorPanel } from './components/KnnRadarInspectorPanel';
 import { SvmKernelInspectorPanel } from './components/SvmKernelInspectorPanel';
+import { GnbBellInspectorPanel } from './components/GnbBellInspectorPanel';
 import { useModelStore } from './store/useModelStore';
 import { useSystemStore } from '../../core/store/useSystemStore';
 
@@ -66,6 +67,7 @@ export function ModelStepView() {
       <SgdMarginInspectorPanel />
       <KnnRadarInspectorPanel />
       <SvmKernelInspectorPanel />
+      <GnbBellInspectorPanel />
 
       <div className="flex justify-between">
         <button
