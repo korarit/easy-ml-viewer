@@ -19,3 +19,6 @@ class DatasetRepository(Protocol):
         self, dataset_id: str, columns: list[str] | None = None, offset: int = 0, limit: int = 100
     ) -> pd.DataFrame:
         ...
+
+    def load_dataframe(self, dataset_id: str, columns: list[str] | None = None) -> pd.DataFrame:
+        ...
