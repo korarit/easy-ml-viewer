@@ -2,4 +2,6 @@
 samples/*.parquet
 samples/*.csv
 !samples/README.md
+!samples/house_prices.csv
+!samples/iris.csv
 __pycache__/
