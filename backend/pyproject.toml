@@ -1,0 +1,27 @@
+[project]
+name = "easy-ml-viewer-backend"
+version = "1.0.0"
+description = "Easy ML Viewer Backend — DDD Shared Core (Phase 01)"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.30.0",
+  "pydantic>=2.9.0",
+  "pydantic-settings>=2.5.0",
+  "psutil>=6.0.0",
+  "python-multipart>=0.0.12",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "httpx>=0.27.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
