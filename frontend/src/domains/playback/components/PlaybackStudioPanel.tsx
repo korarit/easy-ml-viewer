@@ -1,6 +1,15 @@
 import { useEffect, useMemo } from 'react';
 import { usePlaybackStore } from '../store/usePlaybackStore';
 import { useStage3DStore } from '../../stage3d/store/useStage3DStore';
+import { useDatasetStore } from '../../dataset/store/useDatasetStore';
+import { useModelStore } from '../../model_engine/store/useModelStore';
+import { useMappingStore } from '../../mapping/store/useMappingStore';
+import { useTimelineStore } from '../../timeline/store/useTimelineStore';
+import { useTimelineKeyboardShortcuts } from '../../timeline/hooks/useTimelineKeyboardShortcuts';
+import { MultiTrackTimelineCanvas } from '../../timeline/components/MultiTrackTimelineCanvas';
+import { TimelineFilterBar, EventJumpNavigator } from '../../timeline/components/EventJumpNavigator';
+import { BookmarkEditorPopover } from '../../timeline/components/BookmarkEditorPopover';
+import { BookmarkListSidebar } from '../../timeline/components/BookmarkListSidebar';
 import { usePlaybackRafLoop } from '../hooks/usePlaybackRafLoop';
 import { usePlaybackKeyboardShortcuts } from '../hooks/usePlaybackKeyboardShortcuts';
 import { VcrTransportDeck } from './VcrTransportDeck';
@@ -39,9 +48,16 @@ export function PlaybackStudioPanel() {
   const currentFrameIndex = usePlaybackStore((s) => s.currentFrameIndex);
   const totalFrames = usePlaybackStore((s) => s.totalFrames);
   const status = usePlaybackStore((s) => s.status);
+  const { currentDataset } = useDatasetStore();
+  const { currentModel } = useModelStore();
+  const { mappingId } = useMappingStore();
+  const timelineData = useTimelineStore((s) => s.data);
+  const timelineError = useTimelineStore((s) => s.timelineError);
+  const timelineLoading = useTimelineStore((s) => s.isLoading);
 
   usePlaybackRafLoop();
   usePlaybackKeyboardShortcuts(true);
+  useTimelineKeyboardShortcuts(true);
 
   // Queue sync: trajectory length drives the playback buffer.
   const pointCount = points.length;
@@ -61,6 +77,25 @@ export function PlaybackStudioPanel() {
   const rowIndices = useMemo(() => points.map((p) => p.original_row_index), [points]);
   const predictions = useMemo(() => points.map((p) => p.raw_z_pred), [points]);
   const discontinuityFrames = useMemo(() => computeDiscontinuityFrames(points), [points]);
+
+  // Phase 11: smart multi-track analysis follows the same queue (debounced
+  // so queue rebuilds don't spam the backend; session persists bookmarks).
+  const datasetId = currentDataset?.dataset_id ?? null;
+  const modelId = currentModel?.model_id ?? null;
+  const queueKey = rowIndices.join(',');
+  useEffect(() => {
+    if (!datasetId || !modelId || !mappingId || rowIndices.length === 0) return;
+    const timer = window.setTimeout(() => {
+      void useTimelineStore.getState().loadTracks({
+        datasetId,
+        modelId,
+        mappingId,
+        selectedRowIndices: rowIndices,
+        buildKey: `${datasetId}|${modelId}|${mappingId}|queue:${queueKey}`,
+      });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [datasetId, modelId, mappingId, queueKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeRowIndex =
     points.length > 0
@@ -84,10 +119,55 @@ export function PlaybackStudioPanel() {
         </span>
         {totalFrames > 1 && status === 'paused' && (
           <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-            Space = play · ←/→ = ±1 (Shift = ±10) · Home/End · [ ] = loop A/B · L = loop
+            Space = play · ←/→ = ±1 (Shift = ±10) · Home/End · [ ] = loop A/B · L = loop · B = bookmark · N/P = events
           </span>
         )}
       </div>
+      {/* Phase 11 — smart multi-track timeline (prediction / confidence / pins). */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <TimelineFilterBar rowIndices={rowIndices} />
+        <EventJumpNavigator rowIndices={rowIndices} />
+      </div>
+      {timelineLoading && !timelineData ? (
+        <div className="rounded-md px-3 py-4 text-center text-xs" style={{ color: 'var(--text-secondary)' }} role="status">
+          Analyzing timeline tracks…
+        </div>
+      ) : (
+        <MultiTrackTimelineCanvas data={timelineData} rowIndices={rowIndices} />
+      )}
+      {timelineError && (
+        <div className="rounded px-2 py-1 text-[11px]" style={{ background: 'rgba(244,63,94,0.10)', color: '#f43e5e' }} role="alert">
+          Timeline failed: {timelineError}{' '}
+          <button type="button" onClick={() => useTimelineStore.getState().clearError()} className="underline">
+            dismiss
+          </button>
+        </div>
+      )}
+      <div className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+        <span>Zoom: Ctrl + wheel · Click pin = seek · Click cluster = zoom · Minimap = pan</span>
+        <button
+          type="button"
+          onClick={() => useTimelineStore.getState().resetZoom()}
+          className="rounded px-1.5 py-0.5"
+          style={{ border: '1px solid var(--border-subtle)' }}
+        >
+          Reset zoom (Ctrl+0)
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            const tl = useTimelineStore.getState();
+            tl.openEditor(usePlaybackStore.getState().currentFrameIndex);
+          }}
+          disabled={totalFrames <= 1}
+          className="rounded px-1.5 py-0.5 disabled:opacity-40"
+          style={{ border: '1px solid var(--border-subtle)' }}
+        >
+          🔖 Add Note (B)
+        </button>
+      </div>
+      <BookmarkListSidebar rowIndices={rowIndices} />
+      <BookmarkEditorPopover />
       <TimelineScrubberBar
         rowIndices={rowIndices}
         predictions={predictions}
