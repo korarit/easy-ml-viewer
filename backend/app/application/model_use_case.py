@@ -17,8 +17,8 @@ from app.domains.model_engine.registry import ModelRegistry
 from app.domains.model_engine.schema_detector import UniversalSchemaDetector
 from app.infrastructure.ml_loaders.joblib_model_repository import JoblibModelRepository
 
-# Ensure built-in Phase 03 adapters self-register on import.
-from app.domains.model_engine.adapters import linear_regression as _linear_adapter  # noqa: F401
+# Ensure built-in Phase 03/04 adapters self-register on import.
+from app.domains.model_engine.adapters.linear import linear_regression_adapter as _linear_adapter  # noqa: F401
 
 _ALLOWED_MODEL_SUFFIXES = {".joblib", ".pkl", ".pickle"}
 _ALLOWED_SAMPLE_SUFFIXES = {".joblib", ".pkl", ".pickle"}
@@ -42,8 +42,26 @@ def _sanitize_hyperparameters(raw: dict[str, Any]) -> dict[str, Any]:
 
 
 class ModelIngestUseCase:
+    """Application service sharing one process-wide model cache.
+
+    Phase 04 vertical slice needs ``trace-preview`` / ``surface-preview``
+    to resolve a ``model_id`` issued by an earlier ``upload`` call, so all
+    instances share a single :class:`JoblibModelRepository`.
+    """
+
+    _shared_repository: JoblibModelRepository | None = None
+
     def __init__(self, repository: JoblibModelRepository | None = None) -> None:
-        self._repository = repository or JoblibModelRepository()
+        if repository is not None:
+            self._repository = repository
+        else:
+            if ModelIngestUseCase._shared_repository is None:
+                ModelIngestUseCase._shared_repository = JoblibModelRepository()
+            self._repository = ModelIngestUseCase._shared_repository
+
+    def get_model(self, model_id: str) -> Any:
+        """Return the cached deserialized model object (404 on eviction)."""
+        return self._repository.get(model_id)
 
     # -- public API ----------------------------------------------------
     def ingest_upload_contents(self, contents: bytes, filename: str) -> ModelMetadata:

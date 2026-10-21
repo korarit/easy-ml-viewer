@@ -39,7 +39,7 @@ def test_upload_model_happy_path_returns_metadata() -> None:
     assert resp.status_code == 200, resp.text
     data = resp.json()
     assert data["algorithm_key"] == "linear_regression"
-    assert data["display_name"] == "Linear Regression (OLS)"
+    assert data["display_name"] == "Linear Regression (Ordinary Least Squares)"
     assert data["task_type"] == "regression"
     assert data["visual_3d_type"] == "flat_hyperplane"
     assert data["n_features_in"] == 2

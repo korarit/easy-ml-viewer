@@ -4,6 +4,7 @@ import { ModelUploadDropzone } from './components/ModelUploadDropzone';
 import { ModelArchitectureCard } from './components/ModelArchitectureCard';
 import { ModelFeatureSchemaTable } from './components/ModelFeatureSchemaTable';
 import { HyperparameterAccordion } from './components/HyperparameterAccordion';
+import { LinearSliceInspector } from './components/LinearSliceInspector';
 import { useModelStore } from './store/useModelStore';
 import { useSystemStore } from '../../core/store/useSystemStore';
 
@@ -52,6 +53,7 @@ export function ModelStepView() {
       <ModelArchitectureCard />
       <ModelFeatureSchemaTable />
       <HyperparameterAccordion />
+      <LinearSliceInspector />
 
       <div className="flex justify-between">
         <button
