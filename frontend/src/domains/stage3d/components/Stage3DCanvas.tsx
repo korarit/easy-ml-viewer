@@ -16,6 +16,7 @@ import { ActiveSampleSphere3D } from '../../playback/components/ActiveSampleSphe
 import { MotionTrail3D } from '../../playback/components/MotionTrail3D';
 import { GhostComparisonGroup3D } from '../../whatif/components/GhostComparisonGroup3D';
 import { CameraPresetHUD } from './CameraPresetHUD';
+import { registerStage3DCapture } from '../../export-studio/hooks/stage3dCaptureRegistry';
 
 /** Reports FPS + draw calls to the store ~2x per second (no per-frame setState). */
 function PerfReporter() {
@@ -65,6 +66,10 @@ export function Stage3DCanvas() {
     return () => canvas.removeEventListener('webglcontextlost', onLost);
   }, [sceneKey]);
 
+  // Phase 16: expose live gl/scene/camera handles for the synchronous
+  // pre-render snapshot path (cleared on unmount / scene rebuild).
+  useEffect(() => () => registerStage3DCapture(null), [sceneKey]);
+
   return (
     <div className="relative min-h-[420px] w-full flex-1" data-stage3d-canvas="true" style={{ minHeight: 420 }}>
       <Canvas
@@ -72,7 +77,8 @@ export function Stage3DCanvas() {
         dpr={[1, Math.min(window.devicePixelRatio || 1, 2)]}
         camera={{ position: [10.5, 8.5, 12.5], fov: 45, near: 0.1, far: 200 }}
         gl={{ antialias: true, powerPreference: 'high-performance' }}
-        onCreated={({ gl }) => {
+        onCreated={({ gl, scene, camera }) => {
+          registerStage3DCapture({ gl, scene, camera });
           const el = gl.domElement;
           el.addEventListener('webglcontextlost', (e) => {
             e.preventDefault();

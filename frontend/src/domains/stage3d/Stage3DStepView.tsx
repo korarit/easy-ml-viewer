@@ -15,6 +15,9 @@ import { usePlaybackStore } from '../playback/store/usePlaybackStore';
 import { Stage3DCanvas } from './components/Stage3DCanvas';
 import { CommandPaletteModal } from '../studio-ux/components/CommandPaletteModal';
 import { BakeMlvModal } from '../recording/components/BakeMlvModal';
+import { ExportStudioModal } from '../export-studio/components/ExportStudioModal';
+import { VideoRecordingIndicatorBar } from '../export-studio/components/VideoRecordingIndicatorBar';
+import { useExportKeyboardShortcuts } from '../export-studio/hooks/useExportKeyboardShortcuts';
 import { MlvReplayModeBanner } from '../recording/components/MlvReplayModeBanner';
 import { AliasSettingsModal } from '../studio-ux/components/AliasSettingsModal';
 import { CameraPresetToolbar } from '../studio-ux/components/CameraPresetToolbar';
@@ -48,6 +51,7 @@ export function Stage3DStepView() {
   const cinemaMode = useStudioLayoutStore((s) => s.cinemaMode);
   const setCinema = useStudioLayoutStore((s) => s.setCinema);
   usePlaybackToStageSync(ready);
+  useExportKeyboardShortcuts(ready);
 
   const featureNames = useMemo(
     () =>
@@ -155,6 +159,7 @@ export function Stage3DStepView() {
           <div className="relative flex min-h-0 flex-1 gap-2" style={{ minHeight: 420 }}>
             <div className="relative flex min-h-0 flex-1" style={{ minHeight: 420 }}>
               <Stage3DCanvas />
+              <VideoRecordingIndicatorBar />
               {!cinemaMode && <PcaVarianceBadge featureNames={featureNames} />}
             </div>
             {/* Phase 13 — right dock: live What-If sandbox + counterfactuals. */}
@@ -182,6 +187,7 @@ export function Stage3DStepView() {
           <CommandPaletteModal />
           <AliasSettingsModal />
           <BakeMlvModal />
+          <ExportStudioModal />
           <CinemaModeOverlay />
         </>
       )}

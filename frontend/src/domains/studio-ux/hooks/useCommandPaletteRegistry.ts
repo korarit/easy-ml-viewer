@@ -4,6 +4,8 @@ import { useStage3DStore } from '../../stage3d/store/useStage3DStore';
 import { useProjectionStore } from '../../projection3d/store/useProjectionStore';
 import { useWhatIfStore } from '../../whatif/store/useWhatIfStore';
 import { useStudioLayoutStore } from '../store/useStudioLayoutStore';
+import { useExportStore } from '../../export-studio/store/useExportStore';
+import { captureStageSnapshot } from '../../export-studio/hooks/useWebGLSnapshot';
 import type { StudioCommand } from '../types/studioUx.types';
 
 export interface CommandRegistry {
@@ -161,6 +163,22 @@ export function useCommandPaletteRegistry(): CommandRegistry {
     });
 
     // Export & Bake
+    commands.push({
+      id: 'open-export-studio',
+      title: 'Open Export & Reporting Studio…',
+      hint: 'Ctrl+E — enriched CSV/XLSX, 3D video, snapshot',
+      keywords: 'export share studio csv xlsx parquet video webm snapshot png report download',
+      category: 'Export & Bake',
+      run: () => useExportStore.getState().setModal(true),
+    });
+    commands.push({
+      id: 'quick-3d-snapshot',
+      title: 'Quick 3D Snapshot (.png)',
+      hint: 'Ctrl+Shift+S — capture current 3D view',
+      keywords: 'snapshot png screenshot capture image picture',
+      category: 'Export & Bake',
+      run: () => void captureStageSnapshot().catch(() => {}),
+    });
     commands.push({
       id: 'open-aliases',
       title: 'Edit Class & Feature Aliases…',

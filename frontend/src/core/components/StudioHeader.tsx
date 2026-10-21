@@ -1,7 +1,8 @@
-import { Activity, Clapperboard, Keyboard, MonitorCog, Package, Search, Tags, Trash2 } from 'lucide-react';
+import { Activity, Clapperboard, FileDown, Keyboard, MonitorCog, Package, Search, Tags, Trash2 } from 'lucide-react';
 import { useSystemStore, type WorkflowStep } from '../store/useSystemStore';
 import { useStudioLayoutStore } from '../../domains/studio-ux/store/useStudioLayoutStore';
 import { useRecordingStore } from '../../domains/recording/store/useRecordingStore';
+import { useExportStore } from '../../domains/export-studio/store/useExportStore';
 
 const STEPS: { id: WorkflowStep; label: string }[] = [
   { id: 1, label: 'Dataset' },
@@ -18,6 +19,7 @@ export function StudioHeader() {
   const toggleCinema = useStudioLayoutStore((s) => s.toggleCinema);
   const setAliasModal = useStudioLayoutStore((s) => s.setAliasModal);
   const setBakeModal = useRecordingStore((s) => s.setBakeModal);
+  const setExportModal = useExportStore((s) => s.setModal);
   const isReplayMode = useRecordingStore((s) => s.isReplayMode);
   const online = health?.status === 'healthy' || health?.status === 'degraded';
 
@@ -100,6 +102,15 @@ export function StudioHeader() {
         >
           <Package size={14} />
           📦 Bake .mlv
+        </button>
+        <button
+          title="Export enriched CSV/XLSX, 3D video or snapshot (Ctrl+E)"
+          onClick={() => setExportModal(true)}
+          className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium md:flex"
+          style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
+        >
+          <FileDown size={14} />
+          📤 Export &amp; Share
         </button>
         <button
           title="Search commands, jump to row, change axes (Ctrl+K)"
