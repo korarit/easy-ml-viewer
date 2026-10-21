@@ -24,6 +24,10 @@ class BaseModelAdapter(ABC):
     family_name: str = ""
     task_type: TaskType = TaskType.REGRESSION
     visual_3d_type: Visual3DType = Visual3DType.FLAT_HYPERPLANE
+    # Phase 05 edge case #5: most sklearn estimators (LinearRegression, SVC,
+    # MLP, ...) raise on NaN input — adapters that natively tolerate NaN
+    # (e.g. HistGradientBoosting, XGBoost) override this to True.
+    supports_nan_input: bool = False
 
     @classmethod
     @abstractmethod
