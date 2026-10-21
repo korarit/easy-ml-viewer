@@ -471,6 +471,8 @@ class WhatIfOrchestrator:
             decision_flipped=bool(flipped),
             world_distance=world_dist,
             changed_features=changed,
+            base_row_values=[float(v) for v in base_row.tolist()],
+            mutated_row_values=[float(v) for v in mutated_row.tolist()],
             internal_model_trace=trace,
         )
 

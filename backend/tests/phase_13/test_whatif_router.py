@@ -94,6 +94,10 @@ def test_evaluate_mutation_returns_ghost_delta_and_world_distance():
     assert change["feature_name"] == first_name
     assert change["delta_value"] != 0.0
     assert change["is_out_of_distribution"] is False
+    # Slider round-trip: full row vectors echo the backend-snapped values.
+    assert len(payload["base_row_values"]) == len(body["feature_names"])
+    assert len(payload["mutated_row_values"]) == len(body["feature_names"])
+    assert payload["mutated_row_values"][0] == hi
     # Identity mutation -> no changes, zero distance.
     same = client.post(
         f"/api/v1/whatif/{session_id}/frames/0/evaluate",

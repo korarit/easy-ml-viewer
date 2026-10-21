@@ -21,6 +21,8 @@ class WhatIfEvaluationResultEntity(BaseModel):
     decision_flipped: bool = False
     world_distance: float = Field(ge=0.0)
     changed_features: list[FeatureChangeDeltaVO] = Field(default_factory=list)
+    base_row_values: list[float] = Field(default_factory=list)
+    mutated_row_values: list[float] = Field(default_factory=list)
     internal_model_trace: dict = Field(default_factory=dict)
 
 
