@@ -14,6 +14,8 @@ import { WhatIfStudioSection } from '../whatif/components/WhatIfStudioSection';
 import { usePlaybackStore } from '../playback/store/usePlaybackStore';
 import { Stage3DCanvas } from './components/Stage3DCanvas';
 import { CommandPaletteModal } from '../studio-ux/components/CommandPaletteModal';
+import { BakeMlvModal } from '../recording/components/BakeMlvModal';
+import { MlvReplayModeBanner } from '../recording/components/MlvReplayModeBanner';
 import { AliasSettingsModal } from '../studio-ux/components/AliasSettingsModal';
 import { CameraPresetToolbar } from '../studio-ux/components/CameraPresetToolbar';
 import { CinemaModeOverlay } from '../studio-ux/components/CinemaModeOverlay';
@@ -121,6 +123,7 @@ export function Stage3DStepView() {
 
   return (
     <section className="flex min-h-0 w-full flex-1 flex-col gap-2 p-3">
+      <MlvReplayModeBanner />
       {!cinemaMode && <ProjectionControlToolbar availableFeatures={availableFeatures} />}
       {cinemaMode && (
         <div className="flex items-center justify-center gap-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
@@ -178,6 +181,7 @@ export function Stage3DStepView() {
           </div>
           <CommandPaletteModal />
           <AliasSettingsModal />
+          <BakeMlvModal />
           <CinemaModeOverlay />
         </>
       )}

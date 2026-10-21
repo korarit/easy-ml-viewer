@@ -1,6 +1,7 @@
-import { Activity, Clapperboard, Keyboard, MonitorCog, Search, Tags, Trash2 } from 'lucide-react';
+import { Activity, Clapperboard, Keyboard, MonitorCog, Package, Search, Tags, Trash2 } from 'lucide-react';
 import { useSystemStore, type WorkflowStep } from '../store/useSystemStore';
 import { useStudioLayoutStore } from '../../domains/studio-ux/store/useStudioLayoutStore';
+import { useRecordingStore } from '../../domains/recording/store/useRecordingStore';
 
 const STEPS: { id: WorkflowStep; label: string }[] = [
   { id: 1, label: 'Dataset' },
@@ -16,6 +17,8 @@ export function StudioHeader() {
   const cinemaMode = useStudioLayoutStore((s) => s.cinemaMode);
   const toggleCinema = useStudioLayoutStore((s) => s.toggleCinema);
   const setAliasModal = useStudioLayoutStore((s) => s.setAliasModal);
+  const setBakeModal = useRecordingStore((s) => s.setBakeModal);
+  const isReplayMode = useRecordingStore((s) => s.isReplayMode);
   const online = health?.status === 'healthy' || health?.status === 'degraded';
 
   return (
@@ -86,6 +89,18 @@ export function StudioHeader() {
       </nav>
 
       <div className="flex items-center gap-2">
+        <button
+          title="Bake .mlv recording (MsgPack + Zstd)"
+          onClick={() => setBakeModal(true)}
+          className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium md:flex"
+          style={{
+            border: `1px solid ${isReplayMode ? 'rgba(99,102,241,0.6)' : 'var(--border-subtle)'}`,
+            color: 'var(--text-secondary)',
+          }}
+        >
+          <Package size={14} />
+          📦 Bake .mlv
+        </button>
         <button
           title="Search commands, jump to row, change axes (Ctrl+K)"
           onClick={() => setPalette(true)}

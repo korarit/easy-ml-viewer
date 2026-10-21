@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { DatasetDropzone } from './components/DatasetDropzone';
+import { MlvInstantDropzone } from '../recording/components/MlvInstantDropzone';
 import { SheetSelectorBar } from './components/SheetSelectorBar';
 import { MemorySavingsBanner } from './components/MemorySavingsBanner';
 import { ColumnProfileTable } from './components/ColumnProfileTable';
@@ -59,6 +60,7 @@ export function DatasetStepView() {
       )}
 
       <DatasetDropzone />
+      <MlvInstantDropzone />
       <SheetSelectorBar />
       <MemorySavingsBanner />
       <ColumnProfileTable />
