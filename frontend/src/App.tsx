@@ -10,6 +10,7 @@ import { ModelStepView } from './domains/model_engine/ModelStepView';
 import { MappingStepView } from './domains/mapping/MappingStepView';
 import { TrajectoryQueueStepView } from './domains/trajectory_queue/TrajectoryQueueStepView';
 import { Stage3DStepView } from './domains/stage3d/Stage3DStepView';
+import { useStudioKeyboardShortcuts } from './domains/studio-ux/hooks/useStudioKeyboardShortcuts';
 
 const STEP_COPY: Record<number, { title: string; body: string }> = {
   1: { title: 'Step 1 · Dataset', body: 'CSV / XLSX / Parquet ingestion lands here in Phase 02.' },
@@ -94,6 +95,7 @@ function OfflineBanner() {
 export default function App() {
   useHealthPoller();
   useShortcuts();
+  useStudioKeyboardShortcuts(true);
   const { activeStep, health, unlockStep } = useSystemStore();
 
   const toggleTheme = useCallback(() => {

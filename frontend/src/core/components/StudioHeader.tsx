@@ -1,5 +1,6 @@
-import { Activity, Keyboard, MonitorCog, Trash2 } from 'lucide-react';
+import { Activity, Clapperboard, Keyboard, MonitorCog, Search, Tags, Trash2 } from 'lucide-react';
 import { useSystemStore, type WorkflowStep } from '../store/useSystemStore';
+import { useStudioLayoutStore } from '../../domains/studio-ux/store/useStudioLayoutStore';
 
 const STEPS: { id: WorkflowStep; label: string }[] = [
   { id: 1, label: 'Dataset' },
@@ -11,6 +12,10 @@ const STEPS: { id: WorkflowStep; label: string }[] = [
 
 export function StudioHeader() {
   const { activeStep, unlockedMaxStep, health, setActiveStep, setDiagnosticsOpen } = useSystemStore();
+  const setPalette = useStudioLayoutStore((s) => s.setCommandPalette);
+  const cinemaMode = useStudioLayoutStore((s) => s.cinemaMode);
+  const toggleCinema = useStudioLayoutStore((s) => s.toggleCinema);
+  const setAliasModal = useStudioLayoutStore((s) => s.setAliasModal);
   const online = health?.status === 'healthy' || health?.status === 'degraded';
 
   return (
@@ -81,6 +86,36 @@ export function StudioHeader() {
       </nav>
 
       <div className="flex items-center gap-2">
+        <button
+          title="Search commands, jump to row, change axes (Ctrl+K)"
+          onClick={() => setPalette(true)}
+          className="hidden items-center gap-2 rounded-md px-3 py-1.5 text-xs md:flex"
+          style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', minWidth: 220 }}
+        >
+          <Search size={14} />
+          <span className="flex-1 text-left">Search & Commands…</span>
+          <kbd className="font-mono-tabular text-[10px]" style={{ color: 'var(--text-muted)' }}>⌘K</kbd>
+        </button>
+        <button
+          title="Edit class & feature aliases"
+          onClick={() => setAliasModal(true)}
+          className="rounded-md p-2"
+          style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
+        >
+          <Tags size={16} />
+        </button>
+        <button
+          title="Toggle cinema fullscreen mode (Tab)"
+          onClick={() => toggleCinema()}
+          className="rounded-md p-2"
+          style={{
+            border: '1px solid var(--border-subtle)',
+            color: cinemaMode ? '#fff' : 'var(--text-secondary)',
+            background: cinemaMode ? 'var(--ml-primary)' : 'transparent',
+          }}
+        >
+          <Clapperboard size={16} />
+        </button>
         <button
           title="System diagnostics (Ctrl+Shift+D)"
           onClick={() => setDiagnosticsOpen(true)}

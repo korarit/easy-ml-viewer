@@ -13,6 +13,12 @@ import { PlaybackStudioPanel } from '../playback/components/PlaybackStudioPanel'
 import { WhatIfStudioSection } from '../whatif/components/WhatIfStudioSection';
 import { usePlaybackStore } from '../playback/store/usePlaybackStore';
 import { Stage3DCanvas } from './components/Stage3DCanvas';
+import { CommandPaletteModal } from '../studio-ux/components/CommandPaletteModal';
+import { AliasSettingsModal } from '../studio-ux/components/AliasSettingsModal';
+import { CameraPresetToolbar } from '../studio-ux/components/CameraPresetToolbar';
+import { CinemaModeOverlay } from '../studio-ux/components/CinemaModeOverlay';
+import { useStudioLayoutStore } from '../studio-ux/store/useStudioLayoutStore';
+import { usePlaybackToStageSync } from '../studio-ux/hooks/useStudioKeyboardShortcuts';
 
 /** Step 5 studio: 3D projection stage — axis explorer + PCA manifold (Phases 08–09). */
 export function Stage3DStepView() {
@@ -37,6 +43,9 @@ export function Stage3DStepView() {
   const projRobust = useProjectionStore((s) => s.useRobustRange);
 
   const ready = !!(datasetId && modelId && mappingId && mappingItems.length >= 1);
+  const cinemaMode = useStudioLayoutStore((s) => s.cinemaMode);
+  const setCinema = useStudioLayoutStore((s) => s.setCinema);
+  usePlaybackToStageSync(ready);
 
   const featureNames = useMemo(
     () =>
@@ -112,7 +121,19 @@ export function Stage3DStepView() {
 
   return (
     <section className="flex min-h-0 w-full flex-1 flex-col gap-2 p-3">
-      <ProjectionControlToolbar availableFeatures={availableFeatures} />
+      {!cinemaMode && <ProjectionControlToolbar availableFeatures={availableFeatures} />}
+      {cinemaMode && (
+        <div className="flex items-center justify-center gap-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+          <span>🎬 Cinema Mode — panels hidden.</span>
+          <button
+            onClick={() => setCinema(false)}
+            className="rounded px-2 py-1 text-[11px] font-medium"
+            style={{ background: 'var(--ml-primary)', color: '#fff' }}
+          >
+            Exit (Tab / Esc)
+          </button>
+        </div>
+      )}
       {projError && (
         <div className="rounded px-3 py-2 text-xs" style={{ background: 'rgba(244,63,94,0.12)', color: '#f43f5e' }} role="alert">
           Surface failed: {projError}
@@ -131,17 +152,33 @@ export function Stage3DStepView() {
           <div className="relative flex min-h-0 flex-1 gap-2" style={{ minHeight: 420 }}>
             <div className="relative flex min-h-0 flex-1" style={{ minHeight: 420 }}>
               <Stage3DCanvas />
-              <PcaVarianceBadge featureNames={featureNames} />
+              {!cinemaMode && <PcaVarianceBadge featureNames={featureNames} />}
             </div>
             {/* Phase 13 — right dock: live What-If sandbox + counterfactuals. */}
-            <aside className="hidden w-[340px] shrink-0 overflow-y-auto xl:block" aria-label="What-If dock">
+            {!cinemaMode && (
+              <aside className="hidden w-[340px] shrink-0 overflow-y-auto xl:block" aria-label="What-If dock">
+                <WhatIfStudioSection />
+              </aside>
+            )}
+          </div>
+          {!cinemaMode && (
+            <div className="xl:hidden">
               <WhatIfStudioSection />
-            </aside>
+            </div>
+          )}
+          {!cinemaMode && <PlaybackStudioPanel />}
+          <div
+            className="flex flex-wrap items-center justify-center gap-3 border-t pt-2"
+            style={{ borderColor: 'var(--border-subtle)' }}
+          >
+            <CameraPresetToolbar />
+            <span className="hidden text-[11px] sm:inline" style={{ color: 'var(--text-muted)' }}>
+              ⌘K palette · Tab cinema · Click any 3D point to scrub
+            </span>
           </div>
-          <div className="xl:hidden">
-            <WhatIfStudioSection />
-          </div>
-          <PlaybackStudioPanel />
+          <CommandPaletteModal />
+          <AliasSettingsModal />
+          <CinemaModeOverlay />
         </>
       )}
     </section>
