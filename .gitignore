@@ -1,0 +1,5 @@
+.cache/
+samples/*.parquet
+samples/*.csv
+!samples/README.md
+__pycache__/
