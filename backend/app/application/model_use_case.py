@@ -15,10 +15,12 @@ from app.core.memory_guard import MemoryGuard
 from app.domains.model_engine.entities import ModelMetadata
 from app.domains.model_engine.registry import ModelRegistry
 from app.domains.model_engine.schema_detector import UniversalSchemaDetector
+from app.domains.model_engine.value_objects import TaskType
 from app.infrastructure.ml_loaders.joblib_model_repository import JoblibModelRepository
 
-# Ensure built-in Phase 03/04 adapters self-register on import.
+# Ensure built-in Phase 03/04/18 adapters self-register on import.
 from app.domains.model_engine.adapters.linear import linear_regression_adapter as _linear_adapter  # noqa: F401
+from app.domains.model_engine.adapters.linear import logistic_regression_adapter as _logistic_adapter  # noqa: F401
 
 _ALLOWED_MODEL_SUFFIXES = {".joblib", ".pkl", ".pickle"}
 _ALLOWED_SAMPLE_SUFFIXES = {".joblib", ".pkl", ".pickle"}
@@ -170,6 +172,18 @@ class ModelIngestUseCase:
                     intercept = float(arr[0])
             except (TypeError, ValueError):
                 intercept = None
+        # Phase 18: classifier adapters declare one static task_type, but the
+        # true task (binary vs multiclass) depends on the fitted classes_.
+        task_value = adapter.task_type.value
+        if schema.classes is not None and adapter.task_type in (
+            TaskType.BINARY_CLASSIFICATION,
+            TaskType.MULTICLASS_CLASSIFICATION,
+        ):
+            task_value = (
+                TaskType.BINARY_CLASSIFICATION
+                if len(schema.classes) == 2
+                else TaskType.MULTICLASS_CLASSIFICATION
+            ).value
         metadata = ModelMetadata(
             model_id=model_id,
             filename=filename,
@@ -177,7 +191,7 @@ class ModelIngestUseCase:
             algorithm_key=adapter.algorithm_key,
             display_name=adapter.display_name,
             family_name=adapter.family_name,
-            task_type=adapter.task_type.value,
+            task_type=task_value,
             visual_3d_type=adapter.visual_3d_type.value,
             is_pipeline=len(steps) > 1,
             pipeline_steps=steps,

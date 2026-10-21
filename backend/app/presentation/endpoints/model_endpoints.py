@@ -141,20 +141,31 @@ def surface_preview(
     adapter = ModelRegistry.resolve_adapter(final_est, ".joblib")
     schema = UniversalSchemaDetector.extract_schema(final_est)
     t0 = time.perf_counter()
-    surface = adapter.compute_3d_surface(
-        model_obj,
-        GridSpec3D(
-            axis_x_feature_index=body.axis_x_feature_index,
-            axis_y_feature_index=body.axis_y_feature_index,
-            x_min=body.x_min,
-            x_max=body.x_max,
-            y_min=body.y_min,
-            y_max=body.y_max,
-            resolution=body.resolution,
-            fixed_feature_medians=body.fixed_feature_medians,
-        ),
-        n_features=schema.n_features_in,
+    grid_spec = GridSpec3D(
+        axis_x_feature_index=body.axis_x_feature_index,
+        axis_y_feature_index=body.axis_y_feature_index,
+        x_min=body.x_min,
+        x_max=body.x_max,
+        y_min=body.y_min,
+        y_max=body.y_max,
+        resolution=body.resolution,
+        fixed_feature_medians=body.fixed_feature_medians,
     )
+    try:
+        # Phase 18: classifiers accept a target-class selector; regressors
+        # (Phase 04) raise TypeError here and fall back below.
+        surface = adapter.compute_3d_surface(  # type: ignore[call-arg]
+            model_obj,
+            grid_spec,
+            n_features=schema.n_features_in,
+            target_class_idx=body.target_idx,
+        )
+    except TypeError:
+        surface = adapter.compute_3d_surface(
+            model_obj,
+            grid_spec,
+            n_features=schema.n_features_in,
+        )
     elapsed_ms = (time.perf_counter() - t0) * 1000.0
     payload = surface.model_dump(mode="json")
     # Telemetry drawer (§2.3): grid stats + compute latency.
