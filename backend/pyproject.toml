@@ -1,7 +1,7 @@
 [project]
 name = "easy-ml-viewer-backend"
 version = "1.0.0"
-description = "Easy ML Viewer Backend — DDD Shared Core (Phase 02)"
+description = "Easy ML Viewer Backend — DDD Shared Core (Phase 03)"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.115.0",
@@ -15,6 +15,8 @@ dependencies = [
   "pyarrow>=17.0.0",
   "openpyxl>=3.1.5",
   "charset-normalizer>=3.3.0",
+  "scikit-learn>=1.5.0",
+  "joblib>=1.4.0",
 ]
 
 [project.optional-dependencies]
