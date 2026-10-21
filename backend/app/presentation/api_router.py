@@ -15,6 +15,7 @@ from app.presentation.endpoints.projection_endpoints import router as projection
 from app.presentation.endpoints.stage3d_endpoints import router as stage3d_router
 from app.presentation.endpoints.system_endpoints import router as system_router
 from app.presentation.endpoints.timeline_endpoints import router as timeline_router
+from app.presentation.endpoints.whatif_endpoints import router as whatif_router
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(system_router)
@@ -28,3 +29,4 @@ api_router.include_router(stage3d_router)
 api_router.include_router(projection_router)
 api_router.include_router(playback_router)
 api_router.include_router(timeline_router)
+api_router.include_router(whatif_router)
