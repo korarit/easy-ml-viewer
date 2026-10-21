@@ -7,6 +7,7 @@ import { HyperparameterAccordion } from './components/HyperparameterAccordion';
 import { LinearSliceInspector } from './components/LinearSliceInspector';
 import { LogisticInspectorPanel } from './components/LogisticInspectorPanel';
 import { RegularizedInspectorPanel } from './components/RegularizedInspectorPanel';
+import { ElasticNetInspectorPanel } from './components/ElasticNetInspectorPanel';
 import { useModelStore } from './store/useModelStore';
 import { useSystemStore } from '../../core/store/useSystemStore';
 
@@ -58,6 +59,7 @@ export function ModelStepView() {
       <LinearSliceInspector />
       <LogisticInspectorPanel />
       <RegularizedInspectorPanel />
+      <ElasticNetInspectorPanel />
 
       <div className="flex justify-between">
         <button
