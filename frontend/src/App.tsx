@@ -7,11 +7,12 @@ import { useSystemStore } from './core/store/useSystemStore';
 import { API_BASE_URL } from './core/api/client';
 import { DatasetStepView } from './domains/dataset/DatasetStepView';
 import { ModelStepView } from './domains/model_engine/ModelStepView';
+import { MappingStepView } from './domains/mapping/MappingStepView';
 
 const STEP_COPY: Record<number, { title: string; body: string }> = {
   1: { title: 'Step 1 · Dataset', body: 'CSV / XLSX / Parquet ingestion lands here in Phase 02.' },
   2: { title: 'Step 2 · Model', body: 'Model Registry + schema introspection lands here in Phase 03.' },
-  3: { title: 'Step 3 · Column Mapping', body: 'Fuzzy auto-matcher UI lands here in Phase 05.' },
+  3: { title: 'Step 3 · Column Mapping', body: 'Interactive mapper + dry-run validator (Phase 05).' },
   4: { title: 'Step 4 · Trajectory Queue', body: 'Virtualized table + queue builder lands here in Phase 06.' },
   5: { title: 'Step 5 · 3D Stage & VCR', body: 'WebGL stage + 60 FPS VCR lands here in Phases 08–11.' },
 };
@@ -117,6 +118,8 @@ export default function App() {
             <DatasetStepView />
           ) : activeStep === 2 ? (
             <ModelStepView />
+          ) : activeStep === 3 ? (
+            <MappingStepView />
           ) : (
           <section
             className="m-6 w-full max-w-xl self-center rounded-lg p-6"
