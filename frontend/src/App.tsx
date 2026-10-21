@@ -8,6 +8,7 @@ import { API_BASE_URL } from './core/api/client';
 import { DatasetStepView } from './domains/dataset/DatasetStepView';
 import { ModelStepView } from './domains/model_engine/ModelStepView';
 import { MappingStepView } from './domains/mapping/MappingStepView';
+import { TrajectoryQueueStepView } from './domains/trajectory_queue/TrajectoryQueueStepView';
 
 const STEP_COPY: Record<number, { title: string; body: string }> = {
   1: { title: 'Step 1 · Dataset', body: 'CSV / XLSX / Parquet ingestion lands here in Phase 02.' },
@@ -120,6 +121,8 @@ export default function App() {
             <ModelStepView />
           ) : activeStep === 3 ? (
             <MappingStepView />
+          ) : activeStep === 4 ? (
+            <TrajectoryQueueStepView />
           ) : (
           <section
             className="m-6 w-full max-w-xl self-center rounded-lg p-6"
