@@ -9,6 +9,7 @@ import { DatasetStepView } from './domains/dataset/DatasetStepView';
 import { ModelStepView } from './domains/model_engine/ModelStepView';
 import { MappingStepView } from './domains/mapping/MappingStepView';
 import { TrajectoryQueueStepView } from './domains/trajectory_queue/TrajectoryQueueStepView';
+import { Stage3DStepView } from './domains/stage3d/Stage3DStepView';
 
 const STEP_COPY: Record<number, { title: string; body: string }> = {
   1: { title: 'Step 1 · Dataset', body: 'CSV / XLSX / Parquet ingestion lands here in Phase 02.' },
@@ -124,45 +125,7 @@ export default function App() {
           ) : activeStep === 4 ? (
             <TrajectoryQueueStepView />
           ) : (
-          <section
-            className="m-6 w-full max-w-xl self-center rounded-lg p-6"
-            style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)' }}
-          >
-            <p className="text-[11px] tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
-              Phase 01 · App shell ready
-            </p>
-            <h1 className="mt-1 text-lg font-semibold">{copy.title}</h1>
-            <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              {copy.body}
-            </p>
-            <p className="font-mono-tabular mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-              API: {API_BASE_URL} · Theme: {typeof document !== 'undefined' ? document.documentElement.dataset.theme : 'dark'}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                onClick={() => unlockStep(1)}
-                className="rounded-md px-3 py-2 text-xs font-medium"
-                style={{ background: 'var(--ml-primary)', color: '#fff' }}
-              >
-                Start New Session
-              </button>
-              <button
-                onClick={toggleTheme}
-                className="rounded-md px-3 py-2 text-xs font-medium"
-                style={{ border: '1px solid var(--border-strong)', color: 'var(--text-primary)' }}
-              >
-                Toggle Dark / Light
-              </button>
-            </div>
-            {health && (
-              <dl className="font-mono-tabular mt-4 grid grid-cols-2 gap-2 text-[11px]" style={{ color: 'var(--text-secondary)' }}>
-                <div>OS: {health.os_platform}</div>
-                <div>Python: {health.python_version}</div>
-                <div>RAM: {health.memory.process_rss_mb.toFixed(0)}/{health.memory.process_budget_mb.toFixed(0)} MB</div>
-                <div>Cache: {health.cache_size_mb.toFixed(2)} MB</div>
-              </dl>
-            )}
-          </section>
+            <Stage3DStepView />
           )}
         </main>
 
