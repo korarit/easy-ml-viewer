@@ -5,6 +5,7 @@ import { SystemDiagnosticsModal } from './core/components/SystemDiagnosticsModal
 import { GlobalErrorBoundary } from './core/components/GlobalErrorBoundary';
 import { useSystemStore } from './core/store/useSystemStore';
 import { API_BASE_URL } from './core/api/client';
+import { DatasetStepView } from './domains/dataset/DatasetStepView';
 
 const STEP_COPY: Record<number, { title: string; body: string }> = {
   1: { title: 'Step 1 · Dataset', body: 'CSV / XLSX / Parquet ingestion lands here in Phase 02.' },
@@ -110,9 +111,12 @@ export default function App() {
           </div>
         )}
 
-        <main className="flex flex-1 items-center justify-center p-6">
+        <main className="flex min-h-0 flex-1 items-stretch justify-center overflow-auto">
+          {activeStep === 1 ? (
+            <DatasetStepView />
+          ) : (
           <section
-            className="w-full max-w-xl rounded-lg p-6"
+            className="m-6 w-full max-w-xl self-center rounded-lg p-6"
             style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)' }}
           >
             <p className="text-[11px] tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
@@ -150,6 +154,7 @@ export default function App() {
               </dl>
             )}
           </section>
+          )}
         </main>
 
         <SystemStatusBar />
