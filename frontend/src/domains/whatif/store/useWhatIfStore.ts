@@ -33,7 +33,7 @@ interface WhatIfState {
   buildKey: string | null;
   rowIndices: number[];
   featureNames: string[];
-  featureRanges: WhatIfSessionPayload['featureRanges'];
+  featureRanges: WhatIfSessionPayload['feature_ranges'];
   isClassification: boolean;
   axisXFeatureIndex: number;
   axisYFeatureIndex: number;
@@ -208,15 +208,17 @@ export const useWhatIfStore = create<WhatIfState>()(
       const s = get();
       if (!s.sessionId) return;
       const clamped = Math.max(0, Math.min(frameIndex, Math.max(s.rowIndices.length - 1, 0)));
-      const sameFrame = clamped === s.activeFrame && s.baseRowValues.length > 0;
+      if (clamped === s.activeFrame && s.baseRowValues.length > 0 && s.evaluation) return;
       // Edge #1: changing frames auto-resets the sandbox to the new base row.
+      // The stale evaluation is cleared so the ghost never points at the
+      // previous frame while the base re-evaluates.
       set({
         activeFrame: clamped,
         mutatedValues: {},
+        evaluation: null,
         counterfactual: null,
         findError: null,
       });
-      if (sameFrame && s.evaluation) return;
       await runEvaluate(s.sessionId, clamped, {}, s.featureNames, set, get);
     },
 

@@ -10,6 +10,7 @@ import type { AvailableFeature } from '../projection3d/types/projection.types';
 import { ProjectionControlToolbar } from '../projection3d/components/ProjectionControlToolbar';
 import { PcaVarianceBadge } from '../projection3d/components/PcaVarianceBadge';
 import { PlaybackStudioPanel } from '../playback/components/PlaybackStudioPanel';
+import { WhatIfStudioSection } from '../whatif/components/WhatIfStudioSection';
 import { usePlaybackStore } from '../playback/store/usePlaybackStore';
 import { Stage3DCanvas } from './components/Stage3DCanvas';
 
@@ -127,9 +128,18 @@ export function Stage3DStepView() {
         </div>
       ) : (
         <>
-          <div className="relative flex min-h-0 flex-1" style={{ minHeight: 420 }}>
-            <Stage3DCanvas />
-            <PcaVarianceBadge featureNames={featureNames} />
+          <div className="relative flex min-h-0 flex-1 gap-2" style={{ minHeight: 420 }}>
+            <div className="relative flex min-h-0 flex-1" style={{ minHeight: 420 }}>
+              <Stage3DCanvas />
+              <PcaVarianceBadge featureNames={featureNames} />
+            </div>
+            {/* Phase 13 — right dock: live What-If sandbox + counterfactuals. */}
+            <aside className="hidden w-[340px] shrink-0 overflow-y-auto xl:block" aria-label="What-If dock">
+              <WhatIfStudioSection />
+            </aside>
+          </div>
+          <div className="xl:hidden">
+            <WhatIfStudioSection />
           </div>
           <PlaybackStudioPanel />
         </>

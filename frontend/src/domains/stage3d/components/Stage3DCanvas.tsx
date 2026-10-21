@@ -11,6 +11,7 @@ import { ActiveDataPointSphere } from './ActiveDataPointSphere';
 import { ActiveBallHudOverlay } from '../../explainability/components/ActiveBallHudOverlay';
 import { ActiveSampleSphere3D } from '../../playback/components/ActiveSampleSphere3D';
 import { MotionTrail3D } from '../../playback/components/MotionTrail3D';
+import { GhostComparisonGroup3D } from '../../whatif/components/GhostComparisonGroup3D';
 import { CameraPresetHUD } from './CameraPresetHUD';
 
 /** Reports FPS + draw calls to the store ~2x per second (no per-frame setState). */
@@ -88,6 +89,7 @@ export function Stage3DCanvas() {
         <ActiveBallHudOverlay />
         <ActiveSampleSphere3D />
         <MotionTrail3D />
+        <GhostComparisonGroup3D />
         <PerfReporter />
       </Canvas>
 
