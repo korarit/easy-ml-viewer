@@ -7,6 +7,7 @@ import { FilterConditionBar } from './components/FilterConditionBar';
 import { TrajectorySortSelector } from './components/TrajectorySortSelector';
 import { VirtualizedDatasetTable } from './components/VirtualizedDatasetTable';
 import { TrajectoryQueueDock } from './components/TrajectoryQueueDock';
+import { EvaluationLensPanel } from '../evaluation/EvaluationLensPanel';
 import { useTrajectoryQueueStore } from './store/useTrajectoryQueueStore';
 
 /** Step 4 studio: virtualized selector + multi-select + trajectory queue (Phase 06). */
@@ -178,6 +179,8 @@ export function TrajectoryQueueStepView() {
         onBack={() => setActiveStep(3)}
         onLaunch={() => unlockStep(5)}
       />
+
+      <EvaluationLensPanel />
     </div>
   );
 }
