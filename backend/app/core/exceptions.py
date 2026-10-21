@@ -34,12 +34,18 @@ class MemoryLimitExceededError(DomainException):
 
 
 class ModelLoadError(DomainException):
-    def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        details: dict[str, Any] | None = None,
+        code: str = "MODEL_LOAD_ERROR",
+        http_status: int = 400,
+    ) -> None:
         super().__init__(
-            code="MODEL_LOAD_ERROR",
+            code=code,
             message=message,
             details=details,
-            http_status=422,
+            http_status=http_status,
         )
 
 
