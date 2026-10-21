@@ -6,7 +6,10 @@ import { DecisionSurfaceMesh } from '../../projection3d/components/DecisionSurfa
 import { CameraRigController } from './CameraRigController';
 import { CoordinateCage3D } from './CoordinateCage3D';
 import { ParametricSurfaceMesh } from './ParametricSurfaceMesh';
-import { InstancedPointCloud } from './InstancedPointCloud';
+import {
+  InteractiveHoverTooltip,
+  InteractiveQueuePointCloud3D,
+} from '../../studio-ux/components/InteractiveQueuePointCloud3D';
 import { ActiveDataPointSphere } from './ActiveDataPointSphere';
 import { ActiveBallHudOverlay } from '../../explainability/components/ActiveBallHudOverlay';
 import { ActiveSampleSphere3D } from '../../playback/components/ActiveSampleSphere3D';
@@ -84,7 +87,7 @@ export function Stage3DCanvas() {
         <CameraRigController />
         <CoordinateCage3D />
         {hasProjectionSurface ? <DecisionSurfaceMesh /> : <ParametricSurfaceMesh />}
-        <InstancedPointCloud />
+        <InteractiveQueuePointCloud3D />
         <ActiveDataPointSphere />
         <ActiveBallHudOverlay />
         <ActiveSampleSphere3D />
@@ -94,6 +97,7 @@ export function Stage3DCanvas() {
       </Canvas>
 
       <CameraPresetHUD />
+      <InteractiveHoverTooltip />
 
       <div
         className="font-mono-tabular pointer-events-none absolute bottom-2 left-2 rounded px-2 py-1 text-[11px]"
