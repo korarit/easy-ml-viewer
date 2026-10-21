@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+@layer base {
+  /* ---------------------------------------------------- */
+  /* 🌙 DARK THEME (DEFAULT: SLATE OBSIDIAN LAB)           */
+  /* ---------------------------------------------------- */
+  :root,
+  [data-theme="dark"] {
+    --bg-canvas: #0b0f17;
+    --surface-panel: #111827;
+    --surface-elevated: #1e293b;
+    --surface-overlay: rgba(15, 23, 42, 0.85);
+
+    --border-subtle: #1e293b;
+    --border-strong: #334155;
+
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+
+    --ml-primary: #3b82f6;
+    --ml-class-0: #10b981;
+    --ml-class-1: #f43f5e;
+    --ml-anomaly: #f59e0b;
+    --ml-whatif-ghost: #8b5cf6;
+    --ml-wireframe-grid: rgba(148, 163, 184, 0.18);
+    --ml-drop-line: rgba(56, 189, 248, 0.45);
+
+    --stage-vignette-start: #0b0f17;
+    --stage-vignette-end: #06090e;
+    color-scheme: dark;
+  }
+
+  /* ---------------------------------------------------- */
+  /* ☀️ LIGHT THEME (ENGINEERING PAPER & BLUEPRINT)        */
+  /* ---------------------------------------------------- */
+  [data-theme="light"] {
+    --bg-canvas: #f8fafc;
+    --surface-panel: #ffffff;
+    --surface-elevated: #f1f5f9;
+    --surface-overlay: rgba(255, 255, 255, 0.88);
+
+    --border-subtle: #e2e8f0;
+    --border-strong: #cbd5e1;
+
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+
+    --ml-primary: #1d4ed8;
+    --ml-class-0: #059669;
+    --ml-class-1: #e11d48;
+    --ml-anomaly: #d97706;
+    --ml-whatif-ghost: #7c3aed;
+    --ml-wireframe-grid: rgba(100, 116, 139, 0.22);
+    --ml-drop-line: rgba(2, 132, 199, 0.5);
+
+    --stage-vignette-start: #f8fafc;
+    --stage-vignette-end: #e2e8f0;
+    color-scheme: light;
+  }
+
+  /* 100% OFFLINE fonts: files live in /fonts/*.woff2 (see README).
+     Fallback stacks below guarantee zero external requests. */
+  @font-face {
+    font-family: "Inter";
+    src: url("/fonts/Inter-Regular.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Inter";
+    src: url("/fonts/Inter-Medium.woff2") format("woff2");
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Inter";
+    src: url("/fonts/Inter-SemiBold.woff2") format("woff2");
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "JetBrains Mono";
+    src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "JetBrains Mono";
+    src: url("/fonts/JetBrainsMono-Medium.woff2") format("woff2");
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--bg-canvas);
+    color: var(--text-primary);
+    transition:
+      background 150ms cubic-bezier(0.16, 1, 0.3, 1),
+      color 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+/* Tabular numerals for telemetry / VCR timecode */
+.font-mono-tabular {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-feature-settings:
+    "tnum" 1,
+    "zero" 1;
+}
