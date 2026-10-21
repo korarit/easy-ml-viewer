@@ -1,14 +1,17 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useDatasetStore } from '../dataset/store/useDatasetStore';
 import { useModelStore } from '../model_engine/store/useModelStore';
 import { useMappingStore } from '../mapping/store/useMappingStore';
 import { useTrajectoryQueueStore } from '../trajectory_queue/store/useTrajectoryQueueStore';
 import { useSystemStore } from '../../core/store/useSystemStore';
 import { useStage3DStore } from './store/useStage3DStore';
-import { StageAxisControlBar } from './components/StageAxisControlBar';
+import { useProjectionStore } from '../projection3d/store/useProjectionStore';
+import type { AvailableFeature } from '../projection3d/types/projection.types';
+import { ProjectionControlToolbar } from '../projection3d/components/ProjectionControlToolbar';
+import { PcaVarianceBadge } from '../projection3d/components/PcaVarianceBadge';
 import { Stage3DCanvas } from './components/Stage3DCanvas';
 
-/** Step 5 studio: 3D coordinate stage + camera presets + drop-lines (Phase 08). */
+/** Step 5 studio: 3D projection stage — axis explorer + PCA manifold (Phases 08–09). */
 export function Stage3DStepView() {
   const { currentDataset } = useDatasetStore();
   const { currentModel } = useModelStore();
@@ -20,29 +23,65 @@ export function Stage3DStepView() {
   const modelId = currentModel?.model_id ?? null;
   const activeFrameIndex = useStage3DStore((s) => s.activeFrameIndex);
   const points = useStage3DStore((s) => s.points);
-  const stageError = useStage3DStore((s) => s.stageError);
-  const isLoading = useStage3DStore((s) => s.isLoading);
   const setActiveFrameIndex = useStage3DStore((s) => s.setActiveFrameIndex);
+  const projError = useProjectionStore((s) => s.projError);
+  const projLoading = useProjectionStore((s) => s.isLoading);
+  const projMode = useProjectionStore((s) => s.mode);
+  const projX = useProjectionStore((s) => s.xFeature);
+  const projY = useProjectionStore((s) => s.yFeature);
+  const projZ = useProjectionStore((s) => s.zMode);
+  const projPinning = useProjectionStore((s) => s.pinningMode);
+  const projLod = useProjectionStore((s) => s.lodLevel);
+  const projRobust = useProjectionStore((s) => s.useRobustRange);
 
-  const ready = !!(datasetId && modelId && mappingId && mappingItems.length >= 2);
+  const ready = !!(datasetId && modelId && mappingId && mappingItems.length >= 1);
 
-  // Boot the scene once all upstream artifacts exist; re-sync when the queue changes.
+  const featureNames = useMemo(
+    () =>
+      [...mappingItems]
+        .sort((a, b) => a.feature_index - b.feature_index)
+        .map((m) => m.dataset_column_name || m.model_feature_name),
+    [mappingItems],
+  );
+
+  const availableFeatures = useMemo<AvailableFeature[]>(() => {
+    const importanceByIndex = new Map<number, number | null>(
+      (currentModel?.features ?? []).map((f) => [f.index, f.learned_weight_or_importance]),
+    );
+    return [...mappingItems]
+      .sort((a, b) => a.feature_index - b.feature_index)
+      .filter((m) => m.dataset_column_name)
+      .map((m) => ({
+        name: m.dataset_column_name as string,
+        featureIndex: m.feature_index,
+        importance: importanceByIndex.get(m.feature_index) ?? null,
+      }));
+  }, [mappingItems, currentModel]);
+
+  // Auto-pick the top-2 important features as X/Y (spec §3 step 1).
+  useEffect(() => {
+    if (availableFeatures.length > 0) useProjectionStore.getState().ensureDefaults(availableFeatures);
+  }, [availableFeatures]);
+
+  // Bake the LOD surface (debounced 150ms so scrubbing current-row slices
+  // downgrades gracefully instead of spamming the backend).
+  const queueKey = queueIndices.join(',');
+  const frameForPinning = projPinning === 'current_row' ? activeFrameIndex : -1;
   useEffect(() => {
     if (!ready || !datasetId || !modelId || !mappingId) return;
-    const featureNames = [...mappingItems]
-      .sort((a, b) => a.feature_index - b.feature_index)
-      .map((m) => m.dataset_column_name || m.model_feature_name);
-    const st = useStage3DStore.getState();
-    const queueKey = queueIndices.join(',');
-    const lastKey = (Stage3DStepView as { _lastQueue?: string })._lastQueue;
-    const sceneMatches =
-      st.datasetId === datasetId && st.modelId === modelId && st.mappingId === mappingId;
-    if (!sceneMatches || lastKey !== queueKey) {
-      (Stage3DStepView as { _lastQueue?: string })._lastQueue = queueKey;
-      void st.initializeScene({ datasetId, modelId, mappingId, featureNames, queueRowIndices: queueIndices });
-    }
+    const timer = window.setTimeout(() => {
+      void useProjectionStore.getState().fetchSurface({
+        datasetId,
+        modelId,
+        mappingId,
+        queueRowIndices: queueIndices,
+        currentFrameIndex: frameForPinning >= 0 ? frameForPinning : null,
+        featureNames,
+      });
+    }, 150);
+    return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, datasetId, modelId, mappingId, queueIndices.join(',')]);
+  }, [ready, datasetId, modelId, mappingId, queueKey, projMode, projX, projY, projZ, projPinning, projLod, projRobust, frameForPinning, featureNames.join('|')]);
 
   if (!ready) {
     return (
@@ -71,15 +110,15 @@ export function Stage3DStepView() {
 
   return (
     <section className="flex min-h-0 w-full flex-1 flex-col gap-2 p-3">
-      <StageAxisControlBar />
-      {stageError && (
+      <ProjectionControlToolbar availableFeatures={availableFeatures} />
+      {projError && (
         <div className="rounded px-3 py-2 text-xs" style={{ background: 'rgba(244,63,94,0.12)', color: '#f43f5e' }} role="alert">
-          Scene failed: {stageError}
+          Surface failed: {projError}
         </div>
       )}
-      {isLoading && points.length === 0 ? (
+      {projLoading && points.length === 0 ? (
         <div className="flex flex-1 items-center justify-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Normalizing world cube + baking surface…
+          Baking LOD decision surface…
         </div>
       ) : points.length === 0 ? (
         <div className="flex flex-1 items-center justify-center text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -87,8 +126,9 @@ export function Stage3DStepView() {
         </div>
       ) : (
         <>
-          <div className="flex min-h-0 flex-1" style={{ minHeight: 420 }}>
+          <div className="relative flex min-h-0 flex-1" style={{ minHeight: 420 }}>
             <Stage3DCanvas />
+            <PcaVarianceBadge featureNames={featureNames} />
           </div>
           <div
             className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs"

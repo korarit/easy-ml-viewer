@@ -59,6 +59,18 @@ interface Stage3DState {
     queueRowIndices: number[];
   }) => Promise<void>;
   refreshQueue: (queueRowIndices: number[]) => Promise<void>;
+  applyProjectionFrame: (frame: {
+    datasetId: string;
+    modelId: string;
+    mappingId: string;
+    featureNames: string[];
+    axisXFeatureIndex: number;
+    axisYFeatureIndex: number;
+    axes: { x: AxisScaleMeta; y: AxisScaleMeta; z: AxisScaleMeta };
+    points: TrajectoryPoint3D[];
+    surfaceResolution: number;
+    surfaceVisualType: string;
+  }) => void;
   clearError: () => void;
 }
 
@@ -204,6 +216,30 @@ export const useStage3DStore = create<Stage3DState>((set, get) => ({
       mappingId: s.mappingId,
       featureNames: s.featureNames,
       queueRowIndices,
+    });
+  },
+
+  applyProjectionFrame: (frame) => {
+    const prev = get();
+    set({
+      datasetId: frame.datasetId,
+      modelId: frame.modelId,
+      mappingId: frame.mappingId,
+      featureNames: frame.featureNames,
+      axisXFeatureIndex: frame.axisXFeatureIndex,
+      axisYFeatureIndex: frame.axisYFeatureIndex,
+      axes: frame.axes,
+      points: frame.points,
+      surfaceResolution: frame.surfaceResolution,
+      surfaceVisualType: frame.surfaceVisualType,
+      // Phase 09 surface arrives as z-heights; the projection mesh hook
+      // owns its own buffers, so clear the legacy interleaved buffer to
+      // avoid double-rendering two surfaces.
+      surfaceVerticesFloat32: null,
+      activeFrameIndex:
+        frame.points.length === 0
+          ? 0
+          : Math.max(0, Math.min(prev.activeFrameIndex, frame.points.length - 1)),
     });
   },
 

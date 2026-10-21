@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useStage3DStore } from '../store/useStage3DStore';
+import { useProjectionStore } from '../../projection3d/store/useProjectionStore';
+import { DecisionSurfaceMesh } from '../../projection3d/components/DecisionSurfaceMesh';
 import { CameraRigController } from './CameraRigController';
 import { CoordinateCage3D } from './CoordinateCage3D';
 import { ParametricSurfaceMesh } from './ParametricSurfaceMesh';
@@ -41,6 +43,9 @@ export function Stage3DCanvas() {
   const fps = useStage3DStore((s) => s.fps);
   const drawCalls = useStage3DStore((s) => s.drawCalls);
   const pointCount = useStage3DStore((s) => s.points.length);
+  // Phase 09: the LOD projection surface takes over when baked; otherwise
+  // the Phase-08 parametric surface renders (offline fallback path).
+  const hasProjectionSurface = useProjectionStore((s) => s.surfaceData !== null);
 
   useEffect(() => {
     const canvas = document.querySelector('[data-stage3d-canvas="true"] canvas');
@@ -74,7 +79,7 @@ export function Stage3DCanvas() {
         <hemisphereLight args={['#bcd2f5', '#1a2230', 0.5]} />
         <CameraRigController />
         <CoordinateCage3D />
-        <ParametricSurfaceMesh />
+        {hasProjectionSurface ? <DecisionSurfaceMesh /> : <ParametricSurfaceMesh />}
         <InstancedPointCloud />
         <ActiveDataPointSphere />
         <PerfReporter />
