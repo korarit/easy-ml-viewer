@@ -11,6 +11,10 @@ from app.domains.model_engine.adapters.linear.regularized import (
     RidgeClassifierAdapter,
 )
 from app.domains.model_engine.adapters.linear.elasticnet import ElasticNetAdapter
+from app.domains.model_engine.adapters.linear.sgd import (
+    SgdClassifierAdapter,
+    SgdRegressorAdapter,
+)
 
 __all__ = [
     "ElasticNetAdapter",
@@ -18,4 +22,6 @@ __all__ = [
     "LogisticRegressionAdapter",
     "RegularizedLinearAdapter",
     "RidgeClassifierAdapter",
+    "SgdClassifierAdapter",
+    "SgdRegressorAdapter",
 ]
