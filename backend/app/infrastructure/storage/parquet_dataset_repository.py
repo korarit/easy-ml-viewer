@@ -62,6 +62,18 @@ class ParquetDatasetRepository:
             )
         return target
 
+    def load_dataframe(
+        self, dataset_id: str, columns: list[str] | None = None
+    ) -> pd.DataFrame:
+        """Load the full cached parquet into pandas (memory-mapped read).
+
+        Caller is responsible for releasing the frame promptly (Phase 06 query
+        path materialises one filtered window only; the full frame is freed
+        before returning the response).
+        """
+        table = pq.read_table(self._require(dataset_id), columns=columns, memory_map=True)
+        return table.to_pandas()
+
     def load_head(self, dataset_id: str, limit: int = 10) -> pd.DataFrame:
         table = pq.read_table(self._require(dataset_id), memory_map=True)
         return table.slice(0, limit).to_pandas()
