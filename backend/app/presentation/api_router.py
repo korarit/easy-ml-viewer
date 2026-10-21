@@ -14,6 +14,7 @@ from app.presentation.endpoints.playback_endpoints import router as playback_rou
 from app.presentation.endpoints.projection_endpoints import router as projection_router
 from app.presentation.endpoints.stage3d_endpoints import router as stage3d_router
 from app.presentation.endpoints.alias_endpoints import router as alias_router
+from app.presentation.endpoints.compute_endpoints import router as compute_router
 from app.presentation.endpoints.system_endpoints import router as system_router
 from app.presentation.endpoints.export_endpoints import router as export_router
 from app.presentation.endpoints.recording_endpoints import router as recording_router
@@ -36,3 +37,4 @@ api_router.include_router(recording_router)
 api_router.include_router(whatif_router)
 api_router.include_router(alias_router)
 api_router.include_router(export_router)
+api_router.include_router(compute_router)
