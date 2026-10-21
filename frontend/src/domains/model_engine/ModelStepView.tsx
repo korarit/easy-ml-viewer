@@ -9,6 +9,7 @@ import { LogisticInspectorPanel } from './components/LogisticInspectorPanel';
 import { RegularizedInspectorPanel } from './components/RegularizedInspectorPanel';
 import { ElasticNetInspectorPanel } from './components/ElasticNetInspectorPanel';
 import { SgdMarginInspectorPanel } from './components/SgdMarginInspectorPanel';
+import { KnnRadarInspectorPanel } from './components/KnnRadarInspectorPanel';
 import { useModelStore } from './store/useModelStore';
 import { useSystemStore } from '../../core/store/useSystemStore';
 
@@ -62,6 +63,7 @@ export function ModelStepView() {
       <RegularizedInspectorPanel />
       <ElasticNetInspectorPanel />
       <SgdMarginInspectorPanel />
+      <KnnRadarInspectorPanel />
 
       <div className="flex justify-between">
         <button
