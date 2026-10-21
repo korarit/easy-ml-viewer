@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { StudioHeader } from './core/components/StudioHeader';
 import { SystemStatusBar } from './core/components/SystemStatusBar';
 import { SystemDiagnosticsModal } from './core/components/SystemDiagnosticsModal';
+import { ComputeDiagnosticsModal } from './domains/compute/components/ComputeDiagnosticsModal';
+import { ChunkedJobProgressBanner } from './domains/compute/components/ChunkedJobProgressBanner';
 import { GlobalErrorBoundary } from './core/components/GlobalErrorBoundary';
 import { useSystemStore } from './core/store/useSystemStore';
 import { API_BASE_URL } from './core/api/client';
@@ -131,8 +133,10 @@ export default function App() {
           )}
         </main>
 
+        <ChunkedJobProgressBanner />
         <SystemStatusBar />
         <SystemDiagnosticsModal />
+        <ComputeDiagnosticsModal />
       </div>
     </GlobalErrorBoundary>
   );

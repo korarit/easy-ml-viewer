@@ -1,4 +1,5 @@
 import { useSystemStore } from '../store/useSystemStore';
+import { HardwareStatusPill } from '../../domains/compute/components/HardwareStatusPill';
 
 function ramColor(pct: number): string {
   if (pct < 60) return 'var(--ml-class-0)';
@@ -37,6 +38,7 @@ export function SystemStatusBar() {
             GPU: {health.webgl2_renderer ? `WebGL2 Ready (${health.webgl2_renderer.slice(0, 32)})` : 'WebGL2: probing…'}
           </span>
           <span>Cache: {health.cache_size_mb.toFixed(1)} MB</span>
+          <HardwareStatusPill />
         </>
       ) : (
         <>
