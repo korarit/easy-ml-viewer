@@ -25,6 +25,7 @@ from app.domains.model_engine.adapters.linear import regularized as _regularized
 from app.domains.model_engine.adapters.linear import elasticnet as _elasticnet_adapter  # noqa: F401
 from app.domains.model_engine.adapters.linear import sgd as _sgd_adapter  # noqa: F401
 from app.domains.model_engine.adapters.distance import knn as _knn_adapter  # noqa: F401
+from app.domains.model_engine.adapters.distance import svm as _svm_adapter  # noqa: F401
 
 _ALLOWED_MODEL_SUFFIXES = {".joblib", ".pkl", ".pickle"}
 _ALLOWED_SAMPLE_SUFFIXES = {".joblib", ".pkl", ".pickle"}
