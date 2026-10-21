@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from app.presentation.endpoints.dataset_endpoints import router as dataset_router
 from app.presentation.endpoints.dataset_query_endpoints import router as dataset_query_router
 from app.presentation.endpoints.evaluation_endpoints import router as evaluation_router
+from app.presentation.endpoints.explainability_endpoints import router as explainability_router
 from app.presentation.endpoints.mapping_endpoints import router as mapping_router
 from app.presentation.endpoints.model_endpoints import router as model_router
 from app.presentation.endpoints.playback_endpoints import router as playback_router
@@ -22,6 +23,7 @@ api_router.include_router(dataset_query_router)
 api_router.include_router(model_router)
 api_router.include_router(mapping_router)
 api_router.include_router(evaluation_router)
+api_router.include_router(explainability_router)
 api_router.include_router(stage3d_router)
 api_router.include_router(projection_router)
 api_router.include_router(playback_router)
