@@ -1,11 +1,10 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
 import { useStage3DStore } from '../store/useStage3DStore';
 import { usePlaybackStore } from '../../playback/store/usePlaybackStore';
 import { useDisposableThreeResources } from '../hooks/useDisposableThreeResources';
-import { GROUND_WORLD_Z, formatTickLabel, worldToThree } from './stage3dSpace';
+import { GROUND_WORLD_Z, worldToThree } from './stage3dSpace';
 
 function segmentGeometry(a: [number, number, number], b: [number, number, number]): THREE.BufferGeometry {
   const geo = new THREE.BufferGeometry();
@@ -107,10 +106,6 @@ export function ActiveDataPointSphere() {
   const absResidual = point.residual_error !== null ? Math.abs(point.residual_error) : null;
   const residualColor =
     absResidual === null ? '#8fa3bd' : absResidual <= zSpan * 0.05 ? '#34d399' : '#f43f5e';
-  const clampedNote =
-    point.world_x <= -7 || point.world_x >= 7 || point.world_y <= -7 || point.world_y >= 7
-      ? ' [Out-of-Bounds Clamped]'
-      : '';
 
   return (
     <group>
@@ -133,31 +128,8 @@ export function ActiveDataPointSphere() {
           </lineSegments>
         </>
       )}
-      {!playbackOwnsBall && (
-      <Html position={[ballPos[0], ballPos[1] + 0.55, ballPos[2]]} center distanceFactor={18} zIndexRange={[20, 0]}>
-        <div
-          className="font-mono-tabular rounded px-2 py-1 text-[11px] leading-4"
-          style={{ background: 'rgba(10,15,22,0.85)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}
-        >
-          <span style={{ color: '#fb923c' }}>●</span> Frame #{point.frame_index} (Row #{point.original_row_index})
-          {clampedNote}
-          <br />
-          Pred ŷ = {formatTickLabel(point.raw_z_pred)}
-          {point.raw_z_actual !== null && (
-            <>
-              {' '}· Actual = {formatTickLabel(point.raw_z_actual)}{' '}
-              <span style={{ color: residualColor }}>
-                (e = {point.residual_error !== null ? formatTickLabel(point.residual_error) : '—'})
-              </span>
-            </>
-          )}
-          <br />
-          <span style={{ color: 'var(--text-secondary)' }}>
-            [{formatTickLabel(point.raw_x)}, {formatTickLabel(point.raw_y)}]
-          </span>
-        </div>
-      </Html>
-      )}
+      {/* Phase 12: the floating ball label moved to the single-instance
+          ActiveBallHudOverlay (explainability domain) — no per-actor <Html>. */}
     </group>
   );
 }

@@ -8,6 +8,7 @@ import { CoordinateCage3D } from './CoordinateCage3D';
 import { ParametricSurfaceMesh } from './ParametricSurfaceMesh';
 import { InstancedPointCloud } from './InstancedPointCloud';
 import { ActiveDataPointSphere } from './ActiveDataPointSphere';
+import { ActiveBallHudOverlay } from '../../explainability/components/ActiveBallHudOverlay';
 import { ActiveSampleSphere3D } from '../../playback/components/ActiveSampleSphere3D';
 import { MotionTrail3D } from '../../playback/components/MotionTrail3D';
 import { CameraPresetHUD } from './CameraPresetHUD';
@@ -84,6 +85,7 @@ export function Stage3DCanvas() {
         {hasProjectionSurface ? <DecisionSurfaceMesh /> : <ParametricSurfaceMesh />}
         <InstancedPointCloud />
         <ActiveDataPointSphere />
+        <ActiveBallHudOverlay />
         <ActiveSampleSphere3D />
         <MotionTrail3D />
         <PerfReporter />

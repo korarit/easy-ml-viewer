@@ -1,13 +1,11 @@
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
 import { usePlaybackStore } from '../store/usePlaybackStore';
 import { useStage3DStore } from '../../stage3d/store/useStage3DStore';
 import { useDisposableThreeResources } from '../../stage3d/hooks/useDisposableThreeResources';
 import {
   GROUND_WORLD_Z,
-  formatTickLabel,
   worldToThree,
 } from '../../stage3d/components/stage3dSpace';
 
@@ -26,7 +24,6 @@ function finiteOr(value: number, fallback: number) {
  */
 export function ActiveSampleSphere3D() {
   const points = useStage3DStore((s) => s.points);
-  const frameIndex = usePlaybackStore((s) => s.currentFrameIndex);
   const playbackActive = usePlaybackStore((s) => s.totalFrames > 1 && s.smoothInterpolation);
   void usePlaybackStore((s) => s.trailResetCounter);
 
@@ -129,36 +126,15 @@ export function ActiveSampleSphere3D() {
 
   // The legacy integer-frame sphere (Phase 08) owns the single-row /
   // non-interpolated cases; this actor only takes over for smooth VCR motion.
+  // Phase 12: the floating ball label moved to the single-instance
+  // ActiveBallHudOverlay (explainability domain) — no per-actor <Html>.
   if (!playbackActive || points.length === 0) return null;
-  const point = points[Math.max(0, Math.min(frameIndex, points.length - 1))];
 
   return (
     <group>
       <group ref={groupRef}>
         <mesh geometry={ballGeo} material={ballMat} />
         <lineSegments ref={dropRef} geometry={dropGeo} material={dropMat} />
-        <Html position={[0, 0.55, 0]} center distanceFactor={18} zIndexRange={[20, 0]}>
-          <div
-            className="font-mono-tabular rounded px-2 py-1 text-[11px] leading-4"
-            style={{ background: 'rgba(10,15,22,0.85)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}
-          >
-            <span style={{ color: '#fb923c' }}>●</span> Frame #{point.frame_index} (Row #{point.original_row_index})
-            <br />
-            Pred ŷ = {formatTickLabel(point.raw_z_pred)}
-            {point.raw_z_actual !== null && (
-              <>
-                {' '}· Actual = {formatTickLabel(point.raw_z_actual)}{' '}
-                <span style={{ color: point.residual_error !== null && Math.abs(point.residual_error) > 0 ? '#f43f5e' : '#34d399' }}>
-                  (e = {point.residual_error !== null ? formatTickLabel(point.residual_error) : '—'})
-                </span>
-              </>
-            )}
-            <br />
-            <span style={{ color: 'var(--text-secondary)' }}>
-              [{formatTickLabel(point.raw_x)}, {formatTickLabel(point.raw_y)}]
-            </span>
-          </div>
-        </Html>
       </group>
       <mesh ref={ringRef} geometry={ringGeo} material={ringMat} rotation={[-Math.PI / 2, 0, 0]} />
     </group>
