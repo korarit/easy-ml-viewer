@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { useStage3DStore } from '../store/useStage3DStore';
+import { usePlaybackStore } from '../../playback/store/usePlaybackStore';
 import { useDisposableThreeResources } from '../hooks/useDisposableThreeResources';
 import { GROUND_WORLD_Z, formatTickLabel, worldToThree } from './stage3dSpace';
 
@@ -20,6 +21,9 @@ function segmentGeometry(a: [number, number, number], b: [number, number, number
 export function ActiveDataPointSphere() {
   const points = useStage3DStore((s) => s.points);
   const activeFrameIndex = useStage3DStore((s) => s.activeFrameIndex);
+  // Phase 10: when the smooth VCR actor owns the ball, this legacy sphere
+  // yields the ball mesh (drop-lines, ring, label and residual stay live).
+  const playbackOwnsBall = usePlaybackStore((s) => s.totalFrames > 1 && s.smoothInterpolation);
   const showDropLines = useStage3DStore((s) => s.showDropLines);
   const showResidualBars = useStage3DStore((s) => s.showResidualBars);
   const zScale = useStage3DStore((s) => s.axes.z);
@@ -110,8 +114,10 @@ export function ActiveDataPointSphere() {
 
   return (
     <group>
-      <mesh ref={pulseRef} geometry={ballGeo} material={ballMat} position={ballPos} />
-      {showDropLines && (
+      {!playbackOwnsBall && (
+        <mesh ref={pulseRef} geometry={ballGeo} material={ballMat} position={ballPos} />
+      )}
+      {showDropLines && !playbackOwnsBall && (
         <>
           <lineSegments ref={dashedRef} geometry={dropGeo} material={dropMat} />
           <lineSegments geometry={projXGeo} material={projMat} />
@@ -127,6 +133,7 @@ export function ActiveDataPointSphere() {
           </lineSegments>
         </>
       )}
+      {!playbackOwnsBall && (
       <Html position={[ballPos[0], ballPos[1] + 0.55, ballPos[2]]} center distanceFactor={18} zIndexRange={[20, 0]}>
         <div
           className="font-mono-tabular rounded px-2 py-1 text-[11px] leading-4"
@@ -150,6 +157,7 @@ export function ActiveDataPointSphere() {
           </span>
         </div>
       </Html>
+      )}
     </group>
   );
 }

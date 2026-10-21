@@ -8,6 +8,8 @@ import { CoordinateCage3D } from './CoordinateCage3D';
 import { ParametricSurfaceMesh } from './ParametricSurfaceMesh';
 import { InstancedPointCloud } from './InstancedPointCloud';
 import { ActiveDataPointSphere } from './ActiveDataPointSphere';
+import { ActiveSampleSphere3D } from '../../playback/components/ActiveSampleSphere3D';
+import { MotionTrail3D } from '../../playback/components/MotionTrail3D';
 import { CameraPresetHUD } from './CameraPresetHUD';
 
 /** Reports FPS + draw calls to the store ~2x per second (no per-frame setState). */
@@ -82,6 +84,8 @@ export function Stage3DCanvas() {
         {hasProjectionSurface ? <DecisionSurfaceMesh /> : <ParametricSurfaceMesh />}
         <InstancedPointCloud />
         <ActiveDataPointSphere />
+        <ActiveSampleSphere3D />
+        <MotionTrail3D />
         <PerfReporter />
       </Canvas>
 

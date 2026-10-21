@@ -9,6 +9,8 @@ import { useProjectionStore } from '../projection3d/store/useProjectionStore';
 import type { AvailableFeature } from '../projection3d/types/projection.types';
 import { ProjectionControlToolbar } from '../projection3d/components/ProjectionControlToolbar';
 import { PcaVarianceBadge } from '../projection3d/components/PcaVarianceBadge';
+import { PlaybackStudioPanel } from '../playback/components/PlaybackStudioPanel';
+import { usePlaybackStore } from '../playback/store/usePlaybackStore';
 import { Stage3DCanvas } from './components/Stage3DCanvas';
 
 /** Step 5 studio: 3D projection stage — axis explorer + PCA manifold (Phases 08–09). */
@@ -21,9 +23,8 @@ export function Stage3DStepView() {
 
   const datasetId = currentDataset?.dataset_id ?? null;
   const modelId = currentModel?.model_id ?? null;
-  const activeFrameIndex = useStage3DStore((s) => s.activeFrameIndex);
   const points = useStage3DStore((s) => s.points);
-  const setActiveFrameIndex = useStage3DStore((s) => s.setActiveFrameIndex);
+  const playbackFrameIndex = usePlaybackStore((s) => s.currentFrameIndex);
   const projError = useProjectionStore((s) => s.projError);
   const projLoading = useProjectionStore((s) => s.isLoading);
   const projMode = useProjectionStore((s) => s.mode);
@@ -66,7 +67,7 @@ export function Stage3DStepView() {
   // Bake the LOD surface (debounced 150ms so scrubbing current-row slices
   // downgrades gracefully instead of spamming the backend).
   const queueKey = queueIndices.join(',');
-  const frameForPinning = projPinning === 'current_row' ? activeFrameIndex : -1;
+  const frameForPinning = projPinning === 'current_row' ? playbackFrameIndex : -1;
   useEffect(() => {
     if (!ready || !datasetId || !modelId || !mappingId) return;
     const timer = window.setTimeout(() => {
@@ -130,41 +131,7 @@ export function Stage3DStepView() {
             <Stage3DCanvas />
             <PcaVarianceBadge featureNames={featureNames} />
           </div>
-          <div
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs"
-            style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)' }}
-          >
-            <button
-              onClick={() => setActiveFrameIndex(activeFrameIndex - 1)}
-              disabled={activeFrameIndex <= 0}
-              className="rounded px-2 py-1 disabled:opacity-40"
-              style={{ border: '1px solid var(--border-strong)' }}
-              aria-label="Previous frame"
-            >
-              ‹ Prev
-            </button>
-            <input
-              type="range"
-              aria-label="Active frame"
-              min={0}
-              max={Math.max(points.length - 1, 0)}
-              value={Math.min(activeFrameIndex, Math.max(points.length - 1, 0))}
-              onChange={(e) => setActiveFrameIndex(Number(e.target.value))}
-              className="flex-1"
-            />
-            <button
-              onClick={() => setActiveFrameIndex(activeFrameIndex + 1)}
-              disabled={activeFrameIndex >= points.length - 1}
-              className="rounded px-2 py-1 disabled:opacity-40"
-              style={{ border: '1px solid var(--border-strong)' }}
-              aria-label="Next frame"
-            >
-              Next ›
-            </button>
-            <span className="font-mono-tabular" style={{ color: 'var(--text-secondary)' }}>
-              Frame {points.length > 0 ? Math.min(activeFrameIndex, points.length - 1) + 1 : 0} / {points.length}
-            </span>
-          </div>
+          <PlaybackStudioPanel />
         </>
       )}
     </section>
