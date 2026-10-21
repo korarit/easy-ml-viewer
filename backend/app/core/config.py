@@ -10,8 +10,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _default_base_dir() -> Path:
-    # backend/app/core/config.py -> parents[3] == backend/
-    return Path(__file__).resolve().parent.parent.parent
+    # backend/app/core/config.py -> parents[3] == repo root (easy-ml-viewer/)
+    return Path(__file__).resolve().parent.parent.parent.parent
 
 
 class AppSettings(BaseSettings):
@@ -24,10 +24,14 @@ class AppSettings(BaseSettings):
         "http://127.0.0.1:30222",
     ]
 
-    BASE_DIR: Path = _default_base_dir()
+    # NOTE: BASE_DIR is the backend/ folder ( historical ); REPO_ROOT is the
+    # monorepo root that owns .cache/ and samples/ per the Phase 02 blueprint.
+    BASE_DIR: Path = _default_base_dir() / "backend"
+    REPO_ROOT: Path = _default_base_dir()
     CACHE_DIR: Path = _default_base_dir() / ".cache"
     DATASET_CACHE_DIR: Path = _default_base_dir() / ".cache" / "datasets"
     MODEL_CACHE_DIR: Path = _default_base_dir() / ".cache" / "models"
+    SAMPLE_DIR: Path = _default_base_dir() / "samples"
 
     MAX_PROCESS_RAM_MB: int = 4096
     MIN_SYSTEM_FREE_RAM_MB: int = 512
