@@ -191,6 +191,14 @@ export const useWhatIfStore = create<WhatIfState>()(
           isClassification: payload.is_classification,
           axisXFeatureIndex: payload.axis_x_feature_index,
           axisYFeatureIndex: payload.axis_y_feature_index,
+          // Any session (re)build starts from a clean sandbox — the queue
+          // rows may differ even when the dataset/model context is the same.
+          evaluation: null,
+          counterfactual: null,
+          baseRowValues: [],
+          mutatedValues: {},
+          findError: null,
+          evalError: null,
         });
         // Prime the base row for the current frame (spec: sandbox starts clean).
         await get().setFrame(usePlaybackStore.getState().currentFrameIndex);
