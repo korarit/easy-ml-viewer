@@ -120,8 +120,22 @@ export function SystemDiagnosticsModal() {
           </button>
         </div>
 
+        <p className="mt-4 text-xs font-medium" style={{ color: 'var(--text-primary)' }}>
+          Keyboard shortcuts
+        </p>
+        <dl className="mt-1 grid grid-cols-1 gap-x-6 gap-y-1 text-xs sm:grid-cols-2" style={{ color: 'var(--text-secondary)' }}>
+          <div><dt className="font-mono-tabular inline">Ctrl/⌘ K: </dt><dd className="inline">command search</dd></div>
+          <div><dt className="font-mono-tabular inline">Alt + 1…5: </dt><dd className="inline">jump to step</dd></div>
+          <div><dt className="font-mono-tabular inline">Tab: </dt><dd className="inline">cinema mode on/off</dd></div>
+          <div><dt className="font-mono-tabular inline">Space / ← →: </dt><dd className="inline">play / step frame</dd></div>
+          <div><dt className="font-mono-tabular inline">Ctrl + Enter: </dt><dd className="inline">confirm mapping</dd></div>
+          <div><dt className="font-mono-tabular inline">Shift + ?: </dt><dd className="inline">open this panel</dd></div>
+          <div><dt className="font-mono-tabular inline">Ctrl + O / Ctrl + M: </dt><dd className="inline">browse file / model</dd></div>
+          <div><dt className="font-mono-tabular inline">Ctrl + Shift + D: </dt><dd className="inline">also opens this panel</dd></div>
+          <div><dt className="font-mono-tabular inline">Esc: </dt><dd className="inline">close dialog</dd></div>
+        </dl>
         <p className="mt-3 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-          Shortcuts: Shift+? shortcuts · Ctrl+Shift+D diagnostics · Alt+1..5 steps · Esc close
+          Tip: Tab doubles as fullscreen — it never hijacks focus inside text fields or open dialogs.
         </p>
       </div>
     </div>

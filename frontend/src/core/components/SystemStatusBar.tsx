@@ -1,24 +1,28 @@
+import { useState } from 'react';
 import { useSystemStore } from '../store/useSystemStore';
 import { HardwareStatusPill } from '../../domains/compute/components/HardwareStatusPill';
 
 function ramColor(pct: number): string {
-  if (pct < 60) return 'var(--ml-class-0)';
+  if (pct < 60) return 'var(--ml-success, #10b981)';
   if (pct < 85) return 'var(--ml-anomaly)';
   return 'var(--ml-class-1)';
 }
 
 export function SystemStatusBar() {
   const { health, lastError, refreshHealth, clearDiskCache } = useSystemStore();
+  const [notice, setNotice] = useState<string | null>(null);
   const mem = health?.memory;
   const pct = mem?.process_usage_percent ?? 0;
 
   const purgeCache = async () => {
+    setNotice(null);
     try {
       const freed = await clearDiskCache();
-      window.alert(`Temp cache cleared — freed ${freed.toFixed(1)} MB.`);
+      setNotice(`Temp cache cleared — freed ${freed.toFixed(1)} MB.`);
     } catch {
-      window.alert('Cache purge failed — is the backend online?');
+      setNotice('Cache purge failed — is the backend online?');
     }
+    window.setTimeout(() => setNotice(null), 4000);
   };
 
   return (
@@ -28,51 +32,55 @@ export function SystemStatusBar() {
     >
       {health && health.status !== 'offline' ? (
         <>
+          {/* System dot uses neutral blue — data classes keep red/green. */}
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2 w-2 animate-pulse rounded-full" style={{ background: 'var(--ml-class-0)' }} />
-            Backend: Online ({health.latency_ms} ms)
+            <span className="inline-block h-2 w-2 animate-pulse rounded-full" style={{ background: 'var(--ml-primary)' }} />
+            Backend · {health.latency_ms} ms
           </span>
-          <span className="flex items-center gap-2" title={`Process RAM budget: ${mem?.process_budget_mb} MB`}>
+          <span className="flex items-center gap-2" title="App memory usage vs budget">
             RAM:
             <span className="inline-block h-2 w-28 overflow-hidden rounded-full" style={{ background: 'var(--surface-elevated)' }}>
               <span className="block h-full rounded-full" style={{ width: `${Math.min(100, pct)}%`, background: ramColor(pct) }} />
             </span>
-            {mem?.process_rss_mb.toFixed(0)}/{mem?.process_budget_mb.toFixed(0)} MB ({pct.toFixed(1)}%)
-            {mem && mem.is_low_memory && <span style={{ color: 'var(--ml-class-1)' }}>· LOW — close other apps</span>}
+            {mem?.process_rss_mb.toFixed(0)}/{mem?.process_budget_mb.toFixed(0)} MB
+            {mem && mem.is_low_memory && <span style={{ color: 'var(--ml-class-1)' }}>· LOW</span>}
           </span>
-          <span>
-            CPU: {health.cpu_logical_cores} Cores (OMP={health.omp_threads})
+          <span title={health.webgl2_renderer ?? 'Checking graphics…'}>
+            GPU: {health.webgl2_renderer ? 'Ready' : 'Checking…'}
           </span>
-          <span title={health.webgl2_renderer ?? ''}>
-            GPU: {health.webgl2_renderer ? `WebGL2 Ready (${health.webgl2_renderer.slice(0, 32)})` : 'WebGL2: probing…'}
-          </span>
-          <span title="100% air-gapped — no requests leave 127.0.0.1">
-            Offline Mode: 100% Local
-          </span>
-          <span>Cache: {health.cache_size_mb.toFixed(1)} MB</span>
           <button
             onClick={() => void purgeCache()}
-            className="rounded px-2 py-0.5"
+            className="min-h-[28px] rounded px-2 py-0.5"
             style={{ border: '1px solid var(--border-strong)', color: 'var(--text-primary)' }}
-            title="Purge .cache temp parquet files (DELETE /api/v1/system/cache)"
+            title="Delete temporary preview files"
           >
-            Clear Temp Cache
+            Clear temp files
           </button>
           <HardwareStatusPill />
+          {notice && (
+            <span role="status" style={{ color: 'var(--text-primary)' }}>
+              {notice}
+            </span>
+          )}
         </>
       ) : (
         <>
-          <span className="flex items-center gap-1.5" style={{ color: 'var(--ml-class-1)' }}>
-            <span className="inline-block h-2 w-2 rounded-full" style={{ background: 'var(--ml-class-1)' }} />
-            Backend: Offline {lastError ? `— ${lastError}` : ''}
+          <span className="flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
+            <span className="inline-block h-2 w-2 rounded-full" style={{ background: 'var(--text-muted)' }} />
+            Backend offline{lastError ? ` — ${lastError}` : ''}
           </span>
           <button
             onClick={() => void refreshHealth()}
-            className="rounded px-2 py-0.5"
+            className="min-h-[28px] rounded px-2 py-0.5"
             style={{ border: '1px solid var(--border-strong)', color: 'var(--text-primary)' }}
           >
-            Retry Now
+            Retry now
           </button>
+          {notice && (
+            <span role="status" style={{ color: 'var(--text-primary)' }}>
+              {notice}
+            </span>
+          )}
         </>
       )}
     </footer>

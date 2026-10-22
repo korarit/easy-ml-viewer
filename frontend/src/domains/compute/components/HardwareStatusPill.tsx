@@ -42,17 +42,15 @@ export function HardwareStatusPill() {
   return (
     <button
       onClick={() => setDiagnosticsOpen(true)}
-      title={`Compute diagnostics — ${GUARD_LABELS[telemetry.memory_guard_level] ?? ''} (click to open)`}
-      className="flex items-center gap-1.5 rounded-full px-2 py-0.5"
+      title="Open compute details — cores, memory guard, GPU provider"
+      className="flex min-h-[28px] items-center gap-1.5 rounded-full px-2 py-0.5"
       style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
     >
       <span className="inline-block h-2 w-2 rounded-full" style={{ background: dot }} />
       <Cpu size={12} />
       <span className="font-mono-tabular">
-        ⚡ CPU: {telemetry.physical_cores} Cores ({telemetry.logical_cores} Threads) · RAM:{' '}
-        {telemetry.process_rss_mb.toFixed(0)} MB / {telemetry.system_available_mb.toFixed(0)} MB free · GPU:{' '}
-        {gpuLabel}
-        {telemetry.active_jobs_count > 0 ? ` · Jobs: ${telemetry.active_jobs_count}` : ''}
+        Compute: {GUARD_LABELS[telemetry.memory_guard_level] ?? 'Normal'} · {gpuLabel}
+        {telemetry.active_jobs_count > 0 ? ` · ${telemetry.active_jobs_count} jobs` : ''}
       </span>
     </button>
   );

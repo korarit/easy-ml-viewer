@@ -15,8 +15,9 @@
     --border-strong: #334155;
 
     --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
+    --text-secondary: #b6c2d2;
+    --text-muted: #8f9eb3;
+    --ml-success: #10b981;
 
     --ml-primary: #3b82f6;
     --ml-class-0: #10b981;
@@ -45,7 +46,8 @@
 
     --text-primary: #0f172a;
     --text-secondary: #475569;
-    --text-muted: #94a3b8;
+    --text-muted: #64748b;
+    --ml-success: #059669;
 
     --ml-primary: #1d4ed8;
     --ml-class-0: #059669;
@@ -120,4 +122,29 @@
   font-feature-settings:
     "tnum" 1,
     "zero" 1;
+}
+
+/* Visible keyboard focus on every interactive element (WCAG 2.4.7). */
+:where(a, button, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid var(--ml-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 36px minimum touch target for pointer users; icon-only buttons opt in via Tailwind. */
+@media (pointer: coarse) {
+  :where(button, [role="button"]) {
+    min-height: 40px;
+    min-width: 40px;
+  }
+}
+
+/* Respect users who ask for less motion (VCR pulse dot, spinners). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
