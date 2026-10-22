@@ -32,11 +32,22 @@ export interface MlvHeader {
   auto_events: MlvAutoEvent[];
 }
 
+export interface Contour2DSummary {
+  has_contour_2d: boolean;
+  x_feature?: string;
+  y_feature?: string;
+  grid_resolution?: number;
+  n_boundary_polylines?: number;
+  boundary_truncated?: boolean;
+}
+
 export interface PrebakedMlvSession {
   session_id: string;
   header: MlvHeader;
   total_frames: number;
   is_prebaked_replay: boolean;
+  /** Phase 48 — instant-2D summary (absent/False on legacy v1.x files). */
+  contour_2d_summary?: Contour2DSummary;
 }
 
 export type BakeLod = 'standard' | 'high';

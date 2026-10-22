@@ -24,6 +24,9 @@ import { Stage3DCanvas } from './components/Stage3DCanvas';
 import { CommandPaletteModal } from '../studio-ux/components/CommandPaletteModal';
 import { BakeMlvModal } from '../recording/components/BakeMlvModal';
 import { DualCompareModal } from '../recording/components/DualCompareModal';
+import { DualCompare2DModal } from './components/DualCompare2DModal';
+import { SvgExportModal, openSvgExportModal } from '../export-studio/components/SvgExportModal';
+import { useDual2DCompareStore } from './store/useDual2DCompareStore';
 import { ExportStudioModal } from '../export-studio/components/ExportStudioModal';
 import { VideoRecordingIndicatorBar } from '../export-studio/components/VideoRecordingIndicatorBar';
 import { useExportKeyboardShortcuts } from '../export-studio/hooks/useExportKeyboardShortcuts';
@@ -233,6 +236,26 @@ export function Stage3DStepView() {
       {!cinemaMode && (
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <ViewModeSwitcherPill />
+          {viewMode === '2d' && (
+            <div className="flex shrink-0 items-center gap-1.5">
+              <button
+                onClick={() => useDual2DCompareStore.getState().setModalOpen(true)}
+                className="min-h-[32px] rounded-md px-2.5 py-1 text-xs font-medium"
+                style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
+                title="Compare two models on the shared 2D plane (conflict zones + Alt+D navigation)"
+              >
+                ◈ 2D Compare
+              </button>
+              <button
+                onClick={() => openSvgExportModal()}
+                className="min-h-[32px] rounded-md px-2.5 py-1 text-xs font-medium"
+                style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
+                title="Export the 2D decision map as publication-quality vector SVG (100% offline)"
+              >
+                ⬇ SVG
+              </button>
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <ProjectionControlToolbar variant="compact" availableFeatures={availableFeatures} />
           </div>
@@ -347,7 +370,9 @@ export function Stage3DStepView() {
           <AliasSettingsModal />
           <BakeMlvModal />
           <DualCompareModal />
+          <DualCompare2DModal />
           <ExportStudioModal />
+          <SvgExportModal />
           <CinemaModeOverlay />
         </>
       )}

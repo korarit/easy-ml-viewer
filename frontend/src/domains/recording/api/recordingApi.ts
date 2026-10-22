@@ -13,6 +13,8 @@ export interface BakeMlvParams {
   surfaceResolution: number;
   includeExplainability: boolean;
   includeBookmarks: boolean;
+  /** Phase 48 — slim live-contour JSON baked into `contour_2d_cache` for instant 2D. */
+  contour2D?: Record<string, unknown> | null;
 }
 
 async function throwForStatus(res: Response): Promise<void> {
@@ -70,6 +72,7 @@ export async function fetchBakeMlv(params: BakeMlvParams): Promise<Blob> {
         surface_resolution: params.surfaceResolution,
         include_explainability: params.includeExplainability,
         include_bookmarks: params.includeBookmarks,
+        ...(params.contour2D ? { contour_2d: params.contour2D } : {}),
       }),
     },
   );

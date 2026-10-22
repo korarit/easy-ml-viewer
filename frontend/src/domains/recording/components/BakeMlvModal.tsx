@@ -7,6 +7,7 @@ import { useTimelineStore } from '../../timeline/store/useTimelineStore';
 import { downloadMlvBlob, fetchBakeMlv, fetchEstimateMlvSize } from '../api/recordingApi';
 import { formatEstimate, lodToResolution, type BakeLod } from '../types/recording.types';
 import { useRecordingStore } from '../store/useRecordingStore';
+import { useProjectionStore } from '../../projection3d/store/useProjectionStore';
 
 /**
  * Phase 15 — Bake `.mlv` recording modal (spec §2.1).
@@ -33,7 +34,9 @@ export function BakeMlvModal() {
   const [lod, setLod] = useState<BakeLod>('standard');
   const [includeXai, setIncludeXai] = useState(true);
   const [includeBookmarks, setIncludeBookmarks] = useState(true);
+  const [includeContour2D, setIncludeContour2D] = useState(true);
   const [estimate, setEstimate] = useState<number | null>(null);
+  const liveContour = useProjectionStore((s) => s.contourData);
 
   const resolution = lodToResolution(lod);
   const ready = !!(currentDataset && currentModel && mappingId && queueIndices.length > 0);
@@ -72,6 +75,26 @@ export function BakeMlvModal() {
       if (cur < 85) useRecordingStore.getState().setBaking(true, cur + 9);
     }, 220);
     try {
+      // Phase 48 — slim live-contour snapshot for the .mlv 2D cache block
+      // (heatmap + decision isolines only; overlays stay live-computed).
+      let contour2D: Record<string, unknown> | null = null;
+      if (includeContour2D && liveContour) {
+        contour2D = {
+          x_feature: liveContour.xFeature,
+          y_feature: liveContour.yFeature,
+          grid_resolution: liveContour.gridResolution,
+          prediction_task: liveContour.predictionTask,
+          heatmap_min: liveContour.heatmapMin,
+          heatmap_max: liveContour.heatmapMax,
+          heatmap_quantized: Array.from(liveContour.heatmapQuantized),
+          contours: liveContour.contours.map((c) => ({
+            threshold: c.threshold,
+            class_index: c.classIndex,
+            kind: c.kind,
+            line_segments: c.lineSegments.map((s) => [s[0], s[1], s[2], s[3]]),
+          })),
+        };
+      }
       const blob = await fetchBakeMlv({
         sessionId: timelineSession ?? `sess_${Date.now().toString(36)}`,
         datasetId: currentDataset.dataset_id,
@@ -83,6 +106,7 @@ export function BakeMlvModal() {
         surfaceResolution: resolution,
         includeExplainability: includeXai,
         includeBookmarks,
+        contour2D,
       });
       useRecordingStore.getState().setBaking(true, 100);
       const safe = (title.trim() || 'recording').replace(/[^\w\-]+/g, '_').slice(0, 60);
@@ -191,6 +215,18 @@ export function BakeMlvModal() {
               onChange={(e) => setIncludeBookmarks(e.target.checked)}
             />
             <span>Auto-Anomaly Pins & User Bookmarks</span>
+          </label>
+          <label className="flex items-center gap-2 py-1" title="Instant 2D on reload — ~45 KB, switch 2D↔3D in 0.05 s without recompute">
+            <input
+              type="checkbox"
+              checked={includeContour2D}
+              onChange={(e) => setIncludeContour2D(e.target.checked)}
+              disabled={!liveContour}
+            />
+            <span>
+              2D Contour Cache (instant 2D on reload, +~45 KB)
+              {!liveContour && ' — bake the 2D contour first (open 2D Planar view)'}
+            </span>
           </label>
         </fieldset>
 
