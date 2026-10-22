@@ -40,10 +40,12 @@ from app.domains.model_engine.adapters.trees import extra_trees as _extra_trees_
 from app.domains.model_engine.adapters.trees import random_forest as _random_forest_adapter  # noqa: F401
 from app.domains.model_engine.adapters.neural_onnx import mlp_adapter as _mlp_adapter  # noqa: F401
 from app.domains.model_engine.adapters.neural_onnx import pipeline_adapter as _pipeline_adapter  # noqa: F401,F841
+from app.domains.model_engine.adapters.neural_onnx import onnx_classical as _onnx_classical_adapter  # noqa: F401
 
 # Phase 33-35: native booster formats load straight into xgb.Booster / lgb.Booster / CatBoost .cbm.
-_ALLOWED_MODEL_SUFFIXES = {".joblib", ".pkl", ".pickle", ".json", ".ubj", ".model", ".xgb", ".txt", ".lgb", ".cbm"}
-_ALLOWED_SAMPLE_SUFFIXES = {".joblib", ".pkl", ".pickle", ".json", ".ubj", ".model", ".xgb", ".txt", ".lgb", ".cbm"}
+# Phase 38: .onnx loads via onnx.load into a ModelProto graph.
+_ALLOWED_MODEL_SUFFIXES = {".joblib", ".pkl", ".pickle", ".json", ".ubj", ".model", ".xgb", ".txt", ".lgb", ".cbm", ".onnx"}
+_ALLOWED_SAMPLE_SUFFIXES = {".joblib", ".pkl", ".pickle", ".json", ".ubj", ".model", ".xgb", ".txt", ".lgb", ".cbm", ".onnx"}
 
 
 def _sanitize_hyperparameters(raw: dict[str, Any]) -> dict[str, Any]:
@@ -162,7 +164,12 @@ class ModelIngestUseCase:
         load_warnings: list[str],
         file_ext: str,
     ) -> ModelMetadata:
-        if not hasattr(obj, "predict") and not hasattr(obj, "transform"):
+        from app.domains.model_engine.schema_detector import (  # noqa: PLC0415
+            UniversalSchemaDetector as _Detector,
+        )
+
+        _is_onnx = bool(_Detector._is_onnx_proto(obj))
+        if not hasattr(obj, "predict") and not hasattr(obj, "transform") and not _is_onnx:
             raise ModelLoadError(
                 f"File '{filename}' is tabular data, not a model — "
                 "upload datasets in Step 1 (Dataset), not here",
@@ -180,7 +187,55 @@ class ModelIngestUseCase:
         )
 
         _is_pipe = bool(is_sklearn_pipeline(predict_obj) or is_sklearn_pipeline(obj))
-        adapter = ModelRegistry.resolve_adapter(final_est, file_ext)
+        adapter = ModelRegistry.resolve_adapter(final_est if not _is_onnx else obj, file_ext)
+        if _is_onnx:
+            schema = UniversalSchemaDetector.extract_schema(obj)
+            try:
+                weights = adapter.extract_feature_weights(obj, schema.n_features_in)
+            except (TypeError, ValueError, AttributeError):
+                weights = [None for _ in range(schema.n_features_in)]
+            for feature, weight in zip(schema.features, weights):
+                feature.learned_weight_or_importance = weight
+            onnx_meta = None
+            try:
+                from app.domains.model_engine.adapters.neural_onnx.onnx_classical import (  # noqa: PLC0415
+                    inspect_onnx_classical,
+                )
+
+                onnx_meta = inspect_onnx_classical(obj)
+                raw_params: dict[str, Any] = {
+                    "detected_operator": onnx_meta.detected_operator,
+                    "operator_family": onnx_meta.operator_family,
+                    "opset_version": onnx_meta.opset_version,
+                    "has_zipmap": onnx_meta.has_zipmap,
+                    "n_onnx_nodes": len(onnx_meta.node_chain),
+                }
+                if onnx_meta.operator_family == "tree_ensemble":
+                    raw_params["task_hint"] = "tree_ensemble"
+            except (ValueError, TypeError, AttributeError):
+                raw_params = {}
+            task_value = adapter.task_type.value
+            metadata = ModelMetadata(
+                model_id=model_id,
+                filename=filename,
+                sha256_hash=digest,
+                algorithm_key=adapter.algorithm_key,
+                display_name=adapter.display_name,
+                family_name=adapter.family_name,
+                task_type=task_value,
+                visual_3d_type=adapter.visual_3d_type.value,
+                is_pipeline=False,
+                pipeline_steps=[onnx_meta.detected_operator] if onnx_meta is not None else ["onnx"],
+                n_features_in=schema.n_features_in,
+                classes=schema.classes,
+                intercept_or_base=None,
+                features=schema.features,
+                hyperparameters=_sanitize_hyperparameters(raw_params),
+                warnings=load_warnings,
+            )
+            del predict_obj
+            gc.collect()
+            return metadata
         if _is_pipe:
             try:
                 schema = UniversalSchemaDetector.extract_schema(predict_obj)

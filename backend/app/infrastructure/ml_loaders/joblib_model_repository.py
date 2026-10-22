@@ -53,11 +53,15 @@ class JoblibModelRepository:
 
     # Phase 33-35: native booster formats bypass joblib entirely
     # (XGBoost: .json/.ubj/.model/.xgb — LightGBM: .txt/.model/.lgb — CatBoost: .cbm).
+    # Phase 38: .onnx loads via onnx.load (no joblib deserialization).
     _XGB_NATIVE_SUFFIXES = frozenset({".json", ".ubj", ".model", ".xgb", ".txt", ".lgb"})
     _CBM_SUFFIXES = frozenset({".cbm"})
+    _ONNX_SUFFIXES = frozenset({".onnx"})
 
     def load_and_cache(self, model_id: str, file_path: str | Path) -> tuple[Any, list[str]]:
         suffix = Path(file_path).suffix.lower()
+        if suffix in self._ONNX_SUFFIXES:
+            return self._load_onnx(model_id, Path(file_path))
         if suffix in self._CBM_SUFFIXES:
             return self._load_catboost_cbm(model_id, Path(file_path))
         if suffix in self._XGB_NATIVE_SUFFIXES:
@@ -156,6 +160,39 @@ class JoblibModelRepository:
             del evicted
         gc.collect()
         return model, load_warnings
+
+    def _load_onnx(self, model_id: str, file_path: Path) -> tuple[Any, list[str]]:
+        """Load an ``.onnx`` artifact via ``onnx.load`` (§2.1 graph scan)."""
+        try:
+            import onnx  # noqa: PLC0415
+        except ImportError as exc:
+            raise DomainException(
+                code="NATIVE_BOOSTER_LOAD_FAILED",
+                message=f"File '{file_path.name}' needs onnx + onnxruntime (not installed): {exc}",
+                http_status=415,
+            ) from exc
+        try:
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                proto = onnx.load(str(file_path))
+                try:
+                    onnx.checker.check_model(proto)
+                except Exception:
+                    pass  # Converted graphs may use newer opsets; load anyway.
+            load_warnings = [f"{w.category.__name__}: {w.message}" for w in caught]
+        except Exception as exc:
+            raise DomainException(
+                code="NATIVE_BOOSTER_LOAD_FAILED",
+                message=f"File '{file_path.name}' is not a loadable ONNX model: {exc}",
+                http_status=415,
+            ) from exc
+        self._models[model_id] = proto
+        self._models.move_to_end(model_id)
+        while len(self._models) > self._max_models:
+            _, evicted = self._models.popitem(last=False)
+            del evicted
+        gc.collect()
+        return proto, load_warnings
 
     def get(self, model_id: str) -> Any:
         try:

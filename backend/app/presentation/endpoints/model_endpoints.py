@@ -94,9 +94,17 @@ def trace_preview(
     )
 
     model_obj = use_case.get_model(model_id)
+    from app.domains.model_engine.schema_detector import (  # noqa: PLC0415
+        UniversalSchemaDetector as _Detector,
+    )
+
+    _is_onnx = bool(_Detector._is_onnx_proto(model_obj))
     predict_obj, final_est, _ = UniversalSchemaDetector.unwrap_model_container(model_obj)
     _is_pipe = bool(is_sklearn_pipeline(predict_obj) or is_sklearn_pipeline(model_obj))
-    if _is_pipe:
+    if _is_onnx:
+        adapter = ModelRegistry.resolve_adapter(model_obj, ".onnx")
+        schema = UniversalSchemaDetector.extract_schema(model_obj)
+    elif _is_pipe:
         try:
             schema = UniversalSchemaDetector.extract_schema(predict_obj)
         except Exception:
@@ -109,7 +117,8 @@ def trace_preview(
     try:
         X = np.asarray(body.rows, dtype=np.float32)
     except (TypeError, ValueError):
-        # Phase 35: mixed categorical (str) rows — keep object dtype for the Pool.
+        # Phase 35/38: mixed categorical (str) rows — keep object dtype for
+        # the Pool / multi-input ONNX string tensors.
         X = np.asarray(body.rows, dtype=object)
     if X.ndim != 2 or X.shape[1] != schema.n_features_in:
         from app.core.exceptions import SchemaMismatchError
@@ -160,9 +169,17 @@ def surface_preview(
     )
 
     model_obj = use_case.get_model(model_id)
+    from app.domains.model_engine.schema_detector import (  # noqa: PLC0415
+        UniversalSchemaDetector as _Detector2,
+    )
+
+    _is_onnx_surface = bool(_Detector2._is_onnx_proto(model_obj))
     predict_obj, final_est, _ = UniversalSchemaDetector.unwrap_model_container(model_obj)
     _is_pipe_surface = bool(_is_pipe_fn(predict_obj) or _is_pipe_fn(model_obj))
-    if _is_pipe_surface:
+    if _is_onnx_surface:
+        adapter = ModelRegistry.resolve_adapter(model_obj, ".onnx")
+        schema = UniversalSchemaDetector.extract_schema(model_obj)
+    elif _is_pipe_surface:
         try:
             schema = UniversalSchemaDetector.extract_schema(predict_obj)
         except Exception:

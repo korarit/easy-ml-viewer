@@ -124,8 +124,18 @@ class UniversalSchemaDetector:
         return obj, obj, [type(obj).__name__]
 
     @staticmethod
+    def _is_onnx_proto(obj: Any) -> bool:
+        """Duck-typed ``onnx.ModelProto`` check (graph with input/node)."""
+        graph = getattr(obj, "graph", None)
+        return graph is not None and hasattr(graph, "node") and hasattr(graph, "input")
+
+    @staticmethod
     def validate_is_fitted(estimator: Any) -> None:
         """Raise MODEL_NOT_FITTED when the estimator never saw .fit()."""
+        # Phase 38: ONNX artifacts are converted from fitted estimators —
+        # fitted by construction, nothing to verify via sklearn tags.
+        if UniversalSchemaDetector._is_onnx_proto(estimator):
+            return
         # Phase 35: CatBoost estimators expose tree_count_ (no sklearn tags).
         if type(estimator).__name__ in ("CatBoostClassifier", "CatBoostRegressor"):
             try:
@@ -175,6 +185,8 @@ class UniversalSchemaDetector:
     @staticmethod
     def extract_schema(estimator: Any) -> ModelSchema:
         """Build the ordered feature list (embedded names or placeholders)."""
+        if UniversalSchemaDetector._is_onnx_proto(estimator):
+            return UniversalSchemaDetector._extract_onnx_schema(estimator)
         if _is_native_booster(estimator):
             return UniversalSchemaDetector._extract_booster_schema(estimator)
         names_attr = getattr(estimator, "feature_names_in_", None)
@@ -213,6 +225,41 @@ class UniversalSchemaDetector:
             except TypeError:
                 classes = None
         return ModelSchema(n_features_in=n, features=features, classes=classes)
+
+    @staticmethod
+    def _extract_onnx_schema(proto: Any) -> ModelSchema:
+        """Schema for an ``.onnx`` classical graph (§2.2 input signature).
+
+        Single 2D tensor inputs (``[None, F]``) get ``feature_{i}``
+        placeholders; multi-column named inputs (``[None, 1]`` each) use the
+        session input names directly. Class labels come from the
+        ``ai.onnx.ml`` classifier / ``ZipMap`` attributes.
+        """
+        from app.domains.model_engine.adapters.neural_onnx.onnx_classical import (  # noqa: PLC0415
+            inspect_onnx_classical,
+        )
+
+        meta = inspect_onnx_classical(proto)
+        if meta.n_features < 1:
+            raise ModelLoadError(
+                f"Cannot determine input dimensionality of '{type(proto).__name__}'",
+                details={"estimator_class": type(proto).__name__},
+                code="SCHEMA_EXTRACTION_FAILED",
+            )
+        auto = len(meta.input_signature) <= 1
+        features = [
+            FeatureRequirement(
+                index=i,
+                name=name,
+                expected_dtype="float32",
+                is_auto_generated_name=auto,
+            )
+            for i, name in enumerate(meta.feature_names)
+        ]
+        classes: list[str | int | float] | None = None
+        if meta.is_classifier and meta.classes:
+            classes = [v for v in meta.classes]
+        return ModelSchema(n_features_in=meta.n_features, features=features, classes=classes)
 
     @staticmethod
     def _extract_lgb_booster_schema(booster: Any) -> ModelSchema | None:
