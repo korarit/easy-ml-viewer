@@ -8,8 +8,18 @@ import { COLORMAP_LABELS, type ColormapName } from './colormaps';
  * Phase 09 — projection control bar: mode toggle, axis selectors + swap,
  * Z-mode, pinning, LOD badges, appearance popover. Shortcuts: W wireframe,
  * P mode toggle. (G keeps its Phase-08 meaning: drop-lines & grid.)
+ *
+ * `variant="compact"` renders one non-wrapping row (mode + X/Y + Z) for the
+ * 3D studio top strip so the whole stage fits the viewport without scrolling.
+ * `variant="full"` (default) renders every tuning control for the Scene dock tab.
  */
-export function ProjectionControlToolbar({ availableFeatures }: { availableFeatures: AvailableFeature[] }) {
+export function ProjectionControlToolbar({
+  availableFeatures,
+  variant = 'full',
+}: {
+  availableFeatures: AvailableFeature[];
+  variant?: 'compact' | 'full';
+}) {
   const mode = useProjectionStore((s) => s.mode);
   const xFeature = useProjectionStore((s) => s.xFeature);
   const yFeature = useProjectionStore((s) => s.yFeature);
@@ -64,6 +74,118 @@ export function ProjectionControlToolbar({ availableFeatures }: { availableFeatu
     { key: 'high', label: `High ${LOD_RESOLUTIONS.high}×${LOD_RESOLUTIONS.high}` },
   ];
   const tris = surfaceData ? 2 * (surfaceData.gridResolution - 1) * (surfaceData.gridResolution - 1) : null;
+
+  const modeTabs = (
+    <div className="flex shrink-0 overflow-hidden rounded" role="tablist" aria-label="Projection mode">
+      <button
+        role="tab"
+        aria-selected={mode === 'axis_explorer'}
+        onClick={() => s.setMode('axis_explorer')}
+        className="min-h-[32px] px-2 py-1"
+        style={mode === 'axis_explorer' ? segOn : segOff}
+      >
+        Axis
+      </button>
+      <button
+        role="tab"
+        aria-selected={mode === 'pca_3d'}
+        disabled={pcaDisabled}
+        title={pcaDisabled ? 'Needs at least 3 features for a 3-D PCA manifold' : '3D PCA manifold (key P)'}
+        onClick={() => s.setMode('pca_3d')}
+        className="min-h-[32px] px-2 py-1 disabled:opacity-40"
+        style={mode === 'pca_3d' ? segOn : segOff}
+      >
+        3D PCA
+      </button>
+    </div>
+  );
+
+  const axisPickers = mode === 'axis_explorer' ? (
+    <>
+      <label className="flex shrink-0 items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
+        X:
+        <select
+          aria-label="X-Axis Feature"
+          className="max-w-32 rounded px-1 py-1"
+          style={selectStyle}
+          value={xFeature}
+          disabled={isLoading || availableFeatures.length === 0}
+          onChange={(e) => useProjectionStore.getState().setXFeature(e.target.value)}
+        >
+          {availableFeatures.map((f) => (
+            <option key={f.name} value={f.name}>
+              [#{(rankOf(f.name) || 0)}] {f.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button
+        title="Swap X/Y axes"
+        aria-label="Swap X and Y axes"
+        onClick={() => useProjectionStore.getState().swapAxes()}
+        className="min-h-[32px] shrink-0 rounded px-1.5 py-1"
+        style={selectStyle}
+      >
+        ⇄
+      </button>
+      <label className="flex shrink-0 items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
+        Y:
+        <select
+          aria-label="Y-Axis Feature"
+          className="max-w-32 rounded px-1 py-1"
+          style={selectStyle}
+          value={yFeature}
+          disabled={isLoading || availableFeatures.length === 0}
+          onChange={(e) => useProjectionStore.getState().setYFeature(e.target.value)}
+        >
+          {availableFeatures.map((f) => (
+            <option key={f.name} value={f.name}>
+              [#{(rankOf(f.name) || 0)}] {f.name}
+            </option>
+          ))}
+        </select>
+      </label>
+    </>
+  ) : (
+    <span className="shrink-0 text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+      PCA manifold — axes are variance-ranked.
+    </span>
+  );
+
+  const zPicker = (
+    <label className="flex shrink-0 items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
+      Z:
+      <select
+        aria-label="Z-Axis Target Mode"
+        className="rounded px-1 py-1"
+        style={selectStyle}
+        value={zMode}
+        onChange={(e) => useProjectionStore.getState().setZMode(e.target.value as typeof zMode)}
+      >
+        <option value="prediction">Prediction</option>
+        <option value="probability">Probability</option>
+        <option value="residual_error">Error |y − ŷ|</option>
+        <option value="feature_3">Feature 3</option>
+      </select>
+    </label>
+  );
+
+  if (variant === 'compact') {
+    return (
+      <div
+        className="flex items-center gap-2 overflow-x-auto whitespace-nowrap rounded-lg px-3 py-1.5 text-xs"
+        style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)' }}
+        aria-label="Projection quick controls"
+      >
+        {modeTabs}
+        {axisPickers}
+        {zPicker}
+        <span className="font-mono-tabular shrink-0 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+          {isLoading ? 'Drawing…' : surfaceData ? `${(tris ?? 0).toLocaleString()} tris` : 'No surface yet'}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div

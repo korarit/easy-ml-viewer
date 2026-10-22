@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import { Ban, Repeat, Repeat1 } from 'lucide-react';
 import { usePlaybackStore } from '../store/usePlaybackStore';
 import { useStage3DStore } from '../../stage3d/store/useStage3DStore';
 import { useDatasetStore } from '../../dataset/store/useDatasetStore';
@@ -14,7 +15,7 @@ import { usePlaybackRafLoop } from '../hooks/usePlaybackRafLoop';
 import { usePlaybackKeyboardShortcuts } from '../hooks/usePlaybackKeyboardShortcuts';
 import { VcrTransportDeck } from './VcrTransportDeck';
 import { TimelineScrubberBar } from './TimelineScrubberBar';
-import { PlaybackOptionsBar } from './PlaybackOptionsBar';
+import { SPEED_PRESETS, type LoopMode } from '../types/playback.types';
 
 const DISCONTINUITY_THRESHOLD = 4.5;
 
@@ -36,30 +37,34 @@ function computeDiscontinuityFrames(
   return jumps;
 }
 
+const LOOP_LABEL: Record<LoopMode, string> = {
+  none: 'No loop',
+  all: 'Loop all',
+  ab_range: 'A–B loop',
+};
+
+function LoopIcon({ mode }: { mode: LoopMode }) {
+  if (mode === 'none') return <Ban size={14} />;
+  if (mode === 'ab_range') return <Repeat1 size={14} />;
+  return <Repeat size={14} />;
+}
+
 /**
- * Phase 10 — VCR playback studio panel (bottom dock).
- *
- * Owns the queue <-> playback sync: the 3D stage trajectory becomes the
- * playback queue, and the integer frame drives the legacy stage highlight
- * + inspector while `exactFrameFloat` drives WebGL directly at 60FPS.
+ * Headless sync: queue <-> playback buffer, VCR frame <-> 3D highlight,
+ * debounced smart-timeline rebuild, rAF loop + shortcuts. No UI —
+ * mount once in the 3D studio so the strip + dock tabs stay in sync.
  */
-export function PlaybackStudioPanel() {
+export function PlaybackSyncHost() {
   const points = useStage3DStore((s) => s.points);
   const currentFrameIndex = usePlaybackStore((s) => s.currentFrameIndex);
-  const totalFrames = usePlaybackStore((s) => s.totalFrames);
-  const status = usePlaybackStore((s) => s.status);
   const { currentDataset } = useDatasetStore();
   const { currentModel } = useModelStore();
   const { mappingId } = useMappingStore();
-  const timelineData = useTimelineStore((s) => s.data);
-  const timelineError = useTimelineStore((s) => s.timelineError);
-  const timelineLoading = useTimelineStore((s) => s.isLoading);
 
   usePlaybackRafLoop();
   usePlaybackKeyboardShortcuts(true);
   useTimelineKeyboardShortcuts(true);
 
-  // Queue sync: trajectory length drives the playback buffer.
   const pointCount = points.length;
   useEffect(() => {
     const st = usePlaybackStore.getState();
@@ -68,18 +73,12 @@ export function PlaybackStudioPanel() {
     }
   }, [pointCount]);
 
-  // Integer frame sync: inspector + legacy highlight follow the VCR.
   useEffect(() => {
     const clamped = Math.max(0, Math.min(currentFrameIndex, Math.max(pointCount - 1, 0)));
     useStage3DStore.getState().setActiveFrameIndex(clamped);
   }, [currentFrameIndex, pointCount]);
 
   const rowIndices = useMemo(() => points.map((p) => p.original_row_index), [points]);
-  const predictions = useMemo(() => points.map((p) => p.raw_z_pred), [points]);
-  const discontinuityFrames = useMemo(() => computeDiscontinuityFrames(points), [points]);
-
-  // Phase 11: smart multi-track analysis follows the same queue (debounced
-  // so queue rebuilds don't spam the backend; session persists bookmarks).
   const datasetId = currentDataset?.dataset_id ?? null;
   const modelId = currentModel?.model_id ?? null;
   const queueKey = rowIndices.join(',');
@@ -95,42 +94,112 @@ export function PlaybackStudioPanel() {
       });
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [datasetId, modelId, mappingId, queueKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datasetId, modelId, mappingId, queueKey]);
+
+  return null;
+}
+
+/**
+ * Slim bottom transport strip: scrubber on top, transport + speed + loop
+ * on one row. Always visible, fixed height — never overlaps the canvas.
+ */
+export function PlaybackTransportStrip() {
+  const points = useStage3DStore((s) => s.points);
+  const currentFrameIndex = usePlaybackStore((s) => s.currentFrameIndex);
+  const totalFrames = usePlaybackStore((s) => s.totalFrames);
+  const status = usePlaybackStore((s) => s.status);
+  const speedMultiplier = usePlaybackStore((s) => s.speedMultiplier);
+  const loopMode = usePlaybackStore((s) => s.loopMode);
+  const loopRange = usePlaybackStore((s) => s.loopRange);
+
+  const rowIndices = useMemo(() => points.map((p) => p.original_row_index), [points]);
+  const predictions = useMemo(() => points.map((p) => p.raw_z_pred), [points]);
+  const discontinuityFrames = useMemo(() => computeDiscontinuityFrames(points), [points]);
+  const locked = totalFrames <= 1;
 
   const activeRowIndex =
     points.length > 0
       ? (points[Math.max(0, Math.min(currentFrameIndex, points.length - 1))]?.original_row_index ?? null)
       : null;
 
-  const fps = usePlaybackStore((s) => s.baseFps * s.speedMultiplier);
-
   return (
     <div
-      className="flex flex-col gap-2 rounded-lg px-3 py-2.5"
+      className="flex shrink-0 flex-col gap-1.5 rounded-lg px-3 py-2"
       style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)' }}
-      aria-label="VCR playback studio"
+      aria-label="Playback transport"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span
-          className="font-mono-tabular text-[10px] tracking-widest uppercase"
-          style={{ color: 'var(--text-muted)' }}
+      <TimelineScrubberBar
+        rowIndices={rowIndices}
+        predictions={predictions}
+        discontinuityFrames={discontinuityFrames}
+      />
+      <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
+        <VcrTransportDeck rowIndex={activeRowIndex} />
+        <span className="hidden h-6 w-px shrink-0 sm:block" style={{ background: 'var(--border-subtle)' }} aria-hidden />
+        <label className="flex shrink-0 items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+          Speed
+          <select
+            aria-label="Playback speed"
+            disabled={locked}
+            value={String(speedMultiplier)}
+            onChange={(e) => usePlaybackStore.getState().setSpeedMultiplier(Number(e.target.value))}
+            className="font-mono-tabular min-h-[36px] rounded px-1.5 py-1 disabled:opacity-40"
+            style={{ background: 'var(--bg-canvas)', color: 'var(--text-primary)', border: '1px solid var(--border-strong)' }}
+          >
+            {SPEED_PRESETS.map((p) => (
+              <option key={p.multiplier} value={String(p.multiplier)}>
+                {p.label} ({p.fpsLabel})
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          aria-label={`Loop mode: ${LOOP_LABEL[loopMode]}. Activate to cycle.`}
+          title={`Loop: ${LOOP_LABEL[loopMode]} (L to cycle)${loopRange ? ` [A=${loopRange[0]}, B=${loopRange[1]}]` : ''}`}
+          disabled={locked}
+          onClick={() => usePlaybackStore.getState().cycleLoopMode()}
+          className="flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs disabled:opacity-40"
+          style={{
+            border: '1px solid var(--border-strong)',
+            color: loopMode === 'none' ? 'var(--text-muted)' : '#f59e0b',
+            background: loopMode === 'none' ? 'transparent' : 'rgba(245,158,11,0.12)',
+          }}
         >
-          VCR Playback Studio · {status.toUpperCase()} · {fps.toFixed(1)} FPS
+          <LoopIcon mode={loopMode} />
+          {loopMode === 'ab_range' && loopRange ? `A–B (${loopRange[0]}–${loopRange[1]})` : LOOP_LABEL[loopMode]}
+        </button>
+        <span className="font-mono-tabular shrink-0 text-[11px] uppercase" style={{ color: 'var(--text-muted)' }}>
+          {status}
         </span>
-        {totalFrames > 1 && status === 'paused' && (
-          <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-            Space = play · ←/→ = ±1 (Shift = ±10) · Home/End · [ ] = loop A/B · L = loop · B = bookmark · N/P = events
-          </span>
-        )}
       </div>
-      {/* Phase 11 — smart multi-track timeline (prediction / confidence / pins). */}
+    </div>
+  );
+}
+
+/**
+ * Timeline inspector for the right dock tab: filters + multi-track canvas
+ * + zoom helpers + bookmarks. Scrolls inside the dock, never the page.
+ */
+export function TimelineInspectorPanel() {
+  const points = useStage3DStore((s) => s.points);
+  const totalFrames = usePlaybackStore((s) => s.totalFrames);
+  const timelineData = useTimelineStore((s) => s.data);
+  const timelineError = useTimelineStore((s) => s.timelineError);
+  const timelineLoading = useTimelineStore((s) => s.isLoading);
+
+  const rowIndices = useMemo(() => points.map((p) => p.original_row_index), [points]);
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto" aria-label="Timeline inspector">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <TimelineFilterBar rowIndices={rowIndices} />
         <EventJumpNavigator rowIndices={rowIndices} />
       </div>
       {timelineLoading && !timelineData ? (
         <div className="rounded-md px-3 py-4 text-center text-xs" style={{ color: 'var(--text-secondary)' }} role="status">
-          Analyzing timeline tracks…
+          Drawing timeline…
         </div>
       ) : (
         <MultiTrackTimelineCanvas data={timelineData} rowIndices={rowIndices} />
@@ -143,15 +212,15 @@ export function PlaybackStudioPanel() {
           </button>
         </div>
       )}
-      <div className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-        <span>Zoom: Ctrl + wheel · Click pin = seek · Click cluster = zoom · Minimap = pan</span>
+      <div className="flex flex-wrap items-center gap-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+        <span>Scroll to zoom · click a pin to jump</span>
         <button
           type="button"
           onClick={() => useTimelineStore.getState().resetZoom()}
-          className="rounded px-1.5 py-0.5"
+          className="min-h-[28px] rounded px-1.5 py-0.5"
           style={{ border: '1px solid var(--border-subtle)' }}
         >
-          Reset zoom (Ctrl+0)
+          Reset zoom
         </button>
         <button
           type="button"
@@ -160,23 +229,14 @@ export function PlaybackStudioPanel() {
             tl.openEditor(usePlaybackStore.getState().currentFrameIndex);
           }}
           disabled={totalFrames <= 1}
-          className="rounded px-1.5 py-0.5 disabled:opacity-40"
+          className="min-h-[28px] rounded px-1.5 py-0.5 disabled:opacity-40"
           style={{ border: '1px solid var(--border-subtle)' }}
         >
-          🔖 Add Note (B)
+          Add note (B)
         </button>
       </div>
       <BookmarkListSidebar rowIndices={rowIndices} />
       <BookmarkEditorPopover />
-      <TimelineScrubberBar
-        rowIndices={rowIndices}
-        predictions={predictions}
-        discontinuityFrames={discontinuityFrames}
-      />
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <VcrTransportDeck rowIndex={activeRowIndex} />
-        <PlaybackOptionsBar />
-      </div>
     </div>
   );
 }

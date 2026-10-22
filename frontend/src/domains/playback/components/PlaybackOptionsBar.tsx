@@ -16,8 +16,10 @@ function LoopIcon({ mode }: { mode: LoopMode }) {
 
 /**
  * Phase 10 — speed, loop-mode and motion-trail settings bar.
+ * `variant="scene"` renders only the 3D-visual settings (trail + smoothing)
+ * for the Scene dock tab; speed/loop live in the bottom transport strip.
  */
-export function PlaybackOptionsBar({ loopLabel }: { loopLabel?: string }) {
+export function PlaybackOptionsBar({ loopLabel, variant = 'full' }: { loopLabel?: string; variant?: 'full' | 'scene' }) {
   const speedMultiplier = usePlaybackStore((s) => s.speedMultiplier);
   const loopMode = usePlaybackStore((s) => s.loopMode);
   const loopRange = usePlaybackStore((s) => s.loopRange);
@@ -26,6 +28,42 @@ export function PlaybackOptionsBar({ loopLabel }: { loopLabel?: string }) {
   const totalFrames = usePlaybackStore((s) => s.totalFrames);
 
   const locked = totalFrames <= 1;
+
+  if (variant === 'scene') {
+    return (
+      <div className="flex flex-wrap items-center gap-3 text-xs" role="toolbar" aria-label="3D motion settings">
+        <label className="flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
+          Motion trail
+          <select
+            aria-label="Motion trail length"
+            value={String(trailLength)}
+            onChange={(e) => usePlaybackStore.getState().setTrailLength(Number(e.target.value))}
+            className="font-mono-tabular min-h-[32px] rounded px-1.5 py-1"
+            style={{ background: 'var(--bg-canvas)', color: 'var(--text-primary)', border: '1px solid var(--border-strong)' }}
+          >
+            {TRAIL_LENGTH_OPTIONS.map((n) => (
+              <option key={n} value={String(n)}>
+                {n === 0 ? 'Off' : n === 10 ? 'Short (10)' : n === 25 ? 'Medium (25)' : 'Long (50)'}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label
+          className="flex cursor-pointer items-center gap-1.5"
+          style={{ color: 'var(--text-secondary)' }}
+          title="Smooth 60FPS position interpolation (lerp) between frames"
+        >
+          <input
+            type="checkbox"
+            aria-label="Smooth interpolation"
+            checked={smoothInterpolation}
+            onChange={(e) => usePlaybackStore.getState().setSmoothInterpolation(e.target.checked)}
+          />
+          Smooth motion
+        </label>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-3 text-xs" role="toolbar" aria-label="Playback options">

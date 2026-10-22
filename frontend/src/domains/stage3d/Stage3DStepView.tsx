@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDatasetStore } from '../dataset/store/useDatasetStore';
 import { useModelStore } from '../model_engine/store/useModelStore';
 import { useMappingStore } from '../mapping/store/useMappingStore';
@@ -9,7 +9,12 @@ import { useProjectionStore } from '../projection3d/store/useProjectionStore';
 import type { AvailableFeature } from '../projection3d/types/projection.types';
 import { ProjectionControlToolbar } from '../projection3d/components/ProjectionControlToolbar';
 import { PcaVarianceBadge } from '../projection3d/components/PcaVarianceBadge';
-import { PlaybackStudioPanel } from '../playback/components/PlaybackStudioPanel';
+import {
+  PlaybackSyncHost,
+  PlaybackTransportStrip,
+  TimelineInspectorPanel,
+} from '../playback/components/PlaybackStudioPanel';
+import { PlaybackOptionsBar } from '../playback/components/PlaybackOptionsBar';
 import { WhatIfStudioSection } from '../whatif/components/WhatIfStudioSection';
 import { usePlaybackStore } from '../playback/store/usePlaybackStore';
 import { Stage3DCanvas } from './components/Stage3DCanvas';
@@ -26,13 +31,25 @@ import { CinemaModeOverlay } from '../studio-ux/components/CinemaModeOverlay';
 import { useStudioLayoutStore } from '../studio-ux/store/useStudioLayoutStore';
 import { usePlaybackToStageSync } from '../studio-ux/hooks/useStudioKeyboardShortcuts';
 
-/** Step 5 studio: 3D projection stage — axis explorer + PCA manifold (Phases 08–09). */
+type DockTab = 'whatif' | 'timeline' | 'scene';
+
+/**
+ * Step 5 studio — viewport-fit layout, no page scroll.
+ *
+ * Vertical budget (top → bottom, all visible without scrolling):
+ *   1. compact projection strip (one row, ~40px)
+ *   2. canvas + right dock tabs (flex-1, internal scroll only)
+ *   3. slim transport strip (scrubber + play + speed/loop, ~104px)
+ *
+ * Camera presets live on the canvas HUD; full tuning lives in the Scene tab.
+ */
 export function Stage3DStepView() {
   const { currentDataset } = useDatasetStore();
   const { currentModel } = useModelStore();
   const { mappingId, items: mappingItems } = useMappingStore();
   const queueIndices = useTrajectoryQueueStore((s) => s.selectedRowIndices);
   const { setActiveStep } = useSystemStore();
+  const [dockTab, setDockTab] = useState<DockTab>('whatif');
 
   const datasetId = currentDataset?.dataset_id ?? null;
   const modelId = currentModel?.model_id ?? null;
@@ -114,34 +131,41 @@ export function Stage3DStepView() {
         style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)' }}
       >
         <p className="text-[11px] tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
-          Step 5 · 3D Stage
+          Step 5 of 5 · 3D studio
         </p>
-        <h1 className="mt-1 text-lg font-semibold">3D Stage needs a mapped queue first</h1>
+        <h1 className="mt-1 text-lg font-semibold">Pick rows first to see them in 3D</h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Finish Steps 1–4 (dataset → model → column mapping → trajectory queue), then open this studio to
-          inspect the queue in 3D.
+          Work through Steps 1–4 (file → model → matching → pick rows), then come back here —
+          your queue becomes a 3D flight you can play, scrub and explain.
         </p>
         <button
           onClick={() => setActiveStep(4)}
-          className="mt-4 rounded-md px-3 py-2 text-xs font-medium"
+          className="mt-4 min-h-[40px] rounded-md px-3 py-2 text-xs font-medium"
           style={{ background: 'var(--ml-primary)', color: '#fff' }}
         >
-          Back to Trajectory Queue
+          Go pick rows
         </button>
       </section>
     );
   }
 
+  const tabs: Array<{ key: DockTab; label: string; title: string }> = [
+    { key: 'whatif', label: 'What-if', title: 'Test changes on the current frame (W)' },
+    { key: 'timeline', label: 'Timeline', title: 'Events, pins and notes across frames' },
+    { key: 'scene', label: 'Scene', title: 'Surface detail, motion and camera' },
+  ];
+
   return (
-    <section className="flex min-h-0 w-full flex-1 flex-col gap-2 p-3">
+    <section className="flex h-full min-h-0 w-full flex-1 flex-col gap-2 overflow-hidden p-2">
+      <PlaybackSyncHost />
       <MlvReplayModeBanner />
-      {!cinemaMode && <ProjectionControlToolbar availableFeatures={availableFeatures} />}
+      {!cinemaMode && <ProjectionControlToolbar variant="compact" availableFeatures={availableFeatures} />}
       {cinemaMode && (
-        <div className="flex items-center justify-center gap-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-          <span>🎬 Cinema Mode — panels hidden.</span>
+        <div className="flex shrink-0 items-center justify-center gap-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+          <span>Cinema mode — panels hidden.</span>
           <button
             onClick={() => setCinema(false)}
-            className="rounded px-2 py-1 text-[11px] font-medium"
+            className="min-h-[32px] rounded px-2 py-1 text-[11px] font-medium"
             style={{ background: 'var(--ml-primary)', color: '#fff' }}
           >
             Exit (Tab / Esc)
@@ -149,48 +173,91 @@ export function Stage3DStepView() {
         </div>
       )}
       {projError && (
-        <div className="rounded px-3 py-2 text-xs" style={{ background: 'rgba(244,63,94,0.12)', color: '#f43f5e' }} role="alert">
+        <div className="shrink-0 rounded px-3 py-2 text-xs" style={{ background: 'rgba(244,63,94,0.12)', color: '#f43f5e' }} role="alert">
           Surface failed: {projError}
         </div>
       )}
       {projLoading && points.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Baking LOD decision surface…
+        <div className="flex flex-1 items-center justify-center text-sm" style={{ color: 'var(--text-secondary)' }} role="status">
+          Drawing your 3D scene…
         </div>
       ) : points.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Queue is empty — select rows in Step 4 to populate the 3D stage.
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center" style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-sm">No frames yet — pick rows in Step 4 to fill this stage.</p>
+          <button
+            onClick={() => setActiveStep(4)}
+            className="min-h-[40px] rounded-md px-3 py-2 text-xs font-medium"
+            style={{ background: 'var(--ml-primary)', color: '#fff' }}
+          >
+            Go pick rows
+          </button>
         </div>
       ) : (
         <>
-          <div className="relative flex min-h-0 flex-1 gap-2" style={{ minHeight: 420 }}>
-            <div className="relative flex min-h-0 flex-1" style={{ minHeight: 420 }}>
+          {/* Main row: canvas (flex-1) + dock tabs (fixed 320px, internal scroll). */}
+          <div className="flex min-h-0 flex-1 flex-col gap-2 lg:flex-row">
+            <div className="relative min-h-[220px] flex-1 lg:min-h-0">
               <Stage3DCanvas />
               <VideoRecordingIndicatorBar />
               {!cinemaMode && <PcaVarianceBadge featureNames={featureNames} />}
             </div>
-            {/* Phase 13 — right dock: live What-If sandbox + counterfactuals. */}
             {!cinemaMode && (
-              <aside className="hidden w-[340px] shrink-0 overflow-y-auto xl:block" aria-label="What-If dock">
-                <WhatIfStudioSection />
+              <aside
+                className="flex h-56 shrink-0 flex-col overflow-hidden rounded-lg lg:h-auto lg:w-[320px]"
+                style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)' }}
+                aria-label="Studio dock"
+              >
+                <div className="flex shrink-0 gap-1 border-b px-2 pt-1.5" style={{ borderColor: 'var(--border-subtle)' }} role="tablist" aria-label="Dock panels">
+                  {tabs.map((t) => (
+                    <button
+                      key={t.key}
+                      role="tab"
+                      aria-selected={dockTab === t.key}
+                      title={t.title}
+                      onClick={() => setDockTab(t.key)}
+                      className="min-h-[32px] rounded-t px-2.5 py-1 text-xs font-medium"
+                      style={{
+                        color: dockTab === t.key ? 'var(--text-primary)' : 'var(--text-muted)',
+                        background: dockTab === t.key ? 'var(--surface-elevated)' : 'transparent',
+                        borderBottom: dockTab === t.key ? '2px solid var(--ml-primary)' : '2px solid transparent',
+                      }}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
+                  {dockTab === 'whatif' && <WhatIfStudioSection />}
+                  {dockTab === 'timeline' && <TimelineInspectorPanel />}
+                  {dockTab === 'scene' && (
+                    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto" aria-label="Scene tuning">
+                      <ProjectionControlToolbar variant="full" availableFeatures={availableFeatures} />
+                      <div
+                        className="rounded-lg px-3 py-2"
+                        style={{ background: 'var(--surface-elevated)', border: '1px solid var(--border-subtle)' }}
+                      >
+                        <p className="mb-1.5 text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
+                          Motion
+                        </p>
+                        <PlaybackOptionsBar variant="scene" />
+                      </div>
+                      <div
+                        className="rounded-lg px-3 py-2"
+                        style={{ background: 'var(--surface-elevated)', border: '1px solid var(--border-subtle)' }}
+                      >
+                        <CameraPresetToolbar />
+                        <p className="mt-1.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                          ⌘K palette · Tab cinema · Click any 3D point to scrub · 1–5 camera · R reset · G drops
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </aside>
             )}
           </div>
-          {!cinemaMode && (
-            <div className="xl:hidden">
-              <WhatIfStudioSection />
-            </div>
-          )}
-          {!cinemaMode && <PlaybackStudioPanel />}
-          <div
-            className="flex flex-wrap items-center justify-center gap-3 border-t pt-2"
-            style={{ borderColor: 'var(--border-subtle)' }}
-          >
-            <CameraPresetToolbar />
-            <span className="hidden text-[11px] sm:inline" style={{ color: 'var(--text-muted)' }}>
-              ⌘K palette · Tab cinema · Click any 3D point to scrub
-            </span>
-          </div>
+          {/* Bottom strip: fixed height, always visible — never overlaps the canvas. */}
+          {!cinemaMode && <PlaybackTransportStrip />}
           <CommandPaletteModal />
           <AliasSettingsModal />
           <BakeMlvModal />

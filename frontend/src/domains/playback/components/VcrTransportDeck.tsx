@@ -8,6 +8,7 @@ import {
   StepForward,
 } from 'lucide-react';
 import { usePlaybackStore } from '../store/usePlaybackStore';
+import { useSystemStore } from '../../../core/store/useSystemStore';
 import { FrameReadoutBadge } from './FrameReadoutBadge';
 
 function TransportButton({
@@ -57,7 +58,7 @@ function TransportButton({
       onPointerUp={clearHold}
       onPointerLeave={clearHold}
       onPointerCancel={clearHold}
-      className="rounded-md p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-35"
+      className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-35"
       style={{
         border: '1px solid var(--border-strong)',
         color: 'var(--text-primary)',
@@ -78,19 +79,40 @@ export function VcrTransportDeck({ rowIndex }: { rowIndex: number | null }) {
   const status = usePlaybackStore((s) => s.status);
   const totalFrames = usePlaybackStore((s) => s.totalFrames);
   const currentFrameIndex = usePlaybackStore((s) => s.currentFrameIndex);
+  const setActiveStep = useSystemStore((s) => s.setActiveStep);
 
   const locked = totalFrames <= 1;
   const isPlaying = status === 'playing';
-  const singleRowTip = locked
-    ? 'Select more than 1 row to play a continuous animation'
-    : undefined;
+
+  if (locked) {
+    return (
+      <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="VCR transport controls">
+        <button
+          type="button"
+          disabled
+          className="flex min-h-[40px] cursor-not-allowed items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold opacity-40"
+          style={{ border: '1px solid var(--border-strong)', background: 'var(--ml-primary)', color: '#fff' }}
+          title="Playback needs at least 2 frames"
+        >
+          <Play size={16} /> PLAY
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveStep(4)}
+          className="min-h-[40px] rounded-md px-3 py-2 text-xs font-medium"
+          style={{ border: '1px solid var(--border-strong)', color: 'var(--text-primary)' }}
+        >
+          ← Pick at least 2 rows in Step 4 to play
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div
       className="flex flex-wrap items-center gap-2"
       role="toolbar"
       aria-label="VCR transport controls"
-      title={singleRowTip}
     >
       <TransportButton
         label="First frame"
@@ -115,7 +137,7 @@ export function VcrTransportDeck({ rowIndex }: { rowIndex: number | null }) {
         title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
         disabled={locked}
         onClick={() => usePlaybackStore.getState().togglePlayPause()}
-        className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-35"
+        className="flex min-h-[40px] items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-35"
         style={{
           border: '1px solid var(--border-strong)',
           background: isPlaying ? 'rgba(52,211,153,0.18)' : 'var(--ml-primary)',

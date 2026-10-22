@@ -71,7 +71,7 @@ export function Stage3DCanvas() {
   useEffect(() => () => registerStage3DCapture(null), [sceneKey]);
 
   return (
-    <div className="relative min-h-[420px] w-full flex-1" data-stage3d-canvas="true" style={{ minHeight: 420 }}>
+    <div className="relative h-full min-h-0 w-full" data-stage3d-canvas="true">
       <Canvas
         key={sceneKey}
         dpr={[1, Math.min(window.devicePixelRatio || 1, 2)]}
