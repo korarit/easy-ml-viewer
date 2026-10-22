@@ -26,6 +26,7 @@ import { CatBoostInspectorPanel } from './components/CatBoostInspectorPanel';
 import { MlpInspectorPanel } from './components/MlpInspectorPanel';
 import { PipelineInspectorPanel } from './components/PipelineInspectorPanel';
 import { OnnxClassicalInspectorPanel } from './components/OnnxClassicalInspectorPanel';
+import { OnnxDeepInspectorPanel } from './components/OnnxDeepInspectorPanel';
 import { useModelStore } from './store/useModelStore';
 import { useSystemStore } from '../../core/store/useSystemStore';
 
@@ -96,6 +97,7 @@ export function ModelStepView() {
       <MlpInspectorPanel />
       <PipelineInspectorPanel />
       <OnnxClassicalInspectorPanel />
+      <OnnxDeepInspectorPanel />
 
       <div className="flex justify-between">
         <button
