@@ -20,6 +20,15 @@ from pydantic import BaseModel, Field
 
 from app.core.math_3d import WorldCoordinateScaler, build_slice_grid_matrix
 
+try:  # Phase 42 — optional exact linear geometry (never breaks the contour path).
+    from app.domains.model_engine.adapters.linear.linear_2d_extractor import (
+        Linear2DGeometry,
+        extract_linear_2d_geometry,
+    )
+except ImportError:  # pragma: no cover - extractor module missing
+    Linear2DGeometry = None  # type: ignore[assignment,misc]
+    extract_linear_2d_geometry = None  # type: ignore[assignment]
+
 #: Batch size shared with the Phase-09 surface path (memory budget §5.1).
 PREDICT_CHUNK_SIZE = 2_500
 
@@ -72,6 +81,11 @@ class Contour2DResponse(BaseModel):
     )
     contours: list[ContourLevel2D] = Field(default_factory=list)
     response_curve_1d: ResponseCurve1D | None = None
+    # Phase 42 — exact analytic linear geometry (None for non-linear families).
+    linear_2d: dict[str, Any] | None = Field(
+        default=None,
+        description="Exact 2D decision line / margin / sparsity payload for linear models",
+    )
     computation_time_ms: float = 0.0
 
 
@@ -261,6 +275,30 @@ class Contour2DGenerator:
         contours: list[ContourLevel2D] = []
         response_curve: ResponseCurve1D | None = None
 
+        # Phase 42 — exact analytic linear overlay (None for non-linear /
+        # pipelined models; never allowed to break the sampled contour path).
+        linear_2d: dict[str, Any] | None = None
+        if extract_linear_2d_geometry is not None:
+            try:
+                geometry = extract_linear_2d_geometry(
+                    model_obj=model_obj,
+                    final_est=final_est,
+                    X=ref,
+                    x_feature_idx=int(x_feature_idx),
+                    y_feature_idx=int(y_feature_idx),
+                    x_feature_name=x_feature_name,
+                    y_feature_name=y_feature_name,
+                    x_range_raw=(float(x_min), float(x_max)),
+                    y_range_raw=(float(y_min), float(y_max)),
+                    x_scale=x_scale,
+                    y_scale=y_scale,
+                    pinning_mode=str(pinning_mode),
+                    current_row_values=current_row_values,
+                )
+                linear_2d = geometry.model_dump(mode="json") if geometry is not None else None
+            except Exception:
+                linear_2d = None
+
         if prediction_task == "classification":
             proba = _chunked_proba_matrix(model_obj, final_est, grid)
             if proba is None:
@@ -360,5 +398,6 @@ class Contour2DGenerator:
             heatmap_quantized=heatmap_quantized,
             contours=contours,
             response_curve_1d=response_curve,
+            linear_2d=linear_2d,
             computation_time_ms=elapsed_ms,
         )
