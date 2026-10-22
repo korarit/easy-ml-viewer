@@ -13,6 +13,8 @@ import { BookmarkEditorPopover } from '../../timeline/components/BookmarkEditorP
 import { BookmarkListSidebar } from '../../timeline/components/BookmarkListSidebar';
 import { usePlaybackRafLoop } from '../hooks/usePlaybackRafLoop';
 import { usePlaybackKeyboardShortcuts } from '../hooks/usePlaybackKeyboardShortcuts';
+import { useExplainabilityStore } from '../../explainability/store/useExplainabilityStore';
+import { useExplainabilityKeyboardShortcuts } from '../../explainability/hooks/useExplainabilityKeyboardShortcuts';
 import { VcrTransportDeck } from './VcrTransportDeck';
 import { TimelineScrubberBar } from './TimelineScrubberBar';
 import { SPEED_PRESETS, type LoopMode } from '../types/playback.types';
@@ -82,6 +84,10 @@ export function PlaybackSyncHost() {
   const datasetId = currentDataset?.dataset_id ?? null;
   const modelId = currentModel?.model_id ?? null;
   const queueKey = rowIndices.join(',');
+  const explainTopK = useExplainabilityStore((s) => s.topK);
+
+  useExplainabilityKeyboardShortcuts(true);
+
   useEffect(() => {
     if (!datasetId || !modelId || !mappingId || rowIndices.length === 0) return;
     const timer = window.setTimeout(() => {
@@ -96,6 +102,31 @@ export function PlaybackSyncHost() {
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetId, modelId, mappingId, queueKey]);
+
+  // Explainability session follows the same queue (debounced like timeline).
+  useEffect(() => {
+    if (!datasetId || !modelId || !mappingId || rowIndices.length === 0) return;
+    const timer = window.setTimeout(() => {
+      void useExplainabilityStore.getState().loadSession({
+        datasetId,
+        modelId,
+        mappingId,
+        selectedRowIndices: rowIndices,
+        buildKey: `${datasetId}|${modelId}|${mappingId}|queue:${queueKey}`,
+      });
+    }, 300);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datasetId, modelId, mappingId, queueKey]);
+
+  // Per-frame "why": fetch the current frame's explanation (debounced so
+  // 60 FPS playback aborts in-flight and settles on the latest frame).
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void useExplainabilityStore.getState().fetchFrame(currentFrameIndex);
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [currentFrameIndex, explainTopK]);
 
   return null;
 }

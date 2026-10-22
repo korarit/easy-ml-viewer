@@ -16,6 +16,7 @@ import {
 } from '../playback/components/PlaybackStudioPanel';
 import { PlaybackOptionsBar } from '../playback/components/PlaybackOptionsBar';
 import { WhatIfStudioSection } from '../whatif/components/WhatIfStudioSection';
+import { WhyPanel } from '../explainability/components/WhyPanel';
 import { usePlaybackStore } from '../playback/store/usePlaybackStore';
 import { Stage3DCanvas } from './components/Stage3DCanvas';
 import { CommandPaletteModal } from '../studio-ux/components/CommandPaletteModal';
@@ -31,7 +32,7 @@ import { CinemaModeOverlay } from '../studio-ux/components/CinemaModeOverlay';
 import { useStudioLayoutStore } from '../studio-ux/store/useStudioLayoutStore';
 import { usePlaybackToStageSync } from '../studio-ux/hooks/useStudioKeyboardShortcuts';
 
-type DockTab = 'whatif' | 'timeline' | 'scene';
+type DockTab = 'why' | 'whatif' | 'timeline' | 'scene';
 
 /**
  * Step 5 studio — viewport-fit layout, no page scroll.
@@ -49,7 +50,7 @@ export function Stage3DStepView() {
   const { mappingId, items: mappingItems } = useMappingStore();
   const queueIndices = useTrajectoryQueueStore((s) => s.selectedRowIndices);
   const { setActiveStep } = useSystemStore();
-  const [dockTab, setDockTab] = useState<DockTab>('whatif');
+  const [dockTab, setDockTab] = useState<DockTab>('why');
 
   const datasetId = currentDataset?.dataset_id ?? null;
   const modelId = currentModel?.model_id ?? null;
@@ -150,6 +151,7 @@ export function Stage3DStepView() {
   }
 
   const tabs: Array<{ key: DockTab; label: string; title: string }> = [
+    { key: 'why', label: 'Why', title: 'Why the model predicted this (per-frame reasons)' },
     { key: 'whatif', label: 'What-if', title: 'Test changes on the current frame (W)' },
     { key: 'timeline', label: 'Timeline', title: 'Events, pins and notes across frames' },
     { key: 'scene', label: 'Scene', title: 'Surface detail, motion and camera' },
@@ -227,6 +229,7 @@ export function Stage3DStepView() {
                   ))}
                 </div>
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
+                  {dockTab === 'why' && <WhyPanel />}
                   {dockTab === 'whatif' && <WhatIfStudioSection />}
                   {dockTab === 'timeline' && <TimelineInspectorPanel />}
                   {dockTab === 'scene' && (
