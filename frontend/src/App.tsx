@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StudioHeader } from './core/components/StudioHeader';
 import { SystemStatusBar } from './core/components/SystemStatusBar';
 import { SystemDiagnosticsModal } from './core/components/SystemDiagnosticsModal';
@@ -13,14 +13,6 @@ import { MappingStepView } from './domains/mapping/MappingStepView';
 import { TrajectoryQueueStepView } from './domains/trajectory_queue/TrajectoryQueueStepView';
 import { Stage3DStepView } from './domains/stage3d/Stage3DStepView';
 import { useStudioKeyboardShortcuts } from './domains/studio-ux/hooks/useStudioKeyboardShortcuts';
-
-const STEP_COPY: Record<number, { title: string; body: string }> = {
-  1: { title: 'Step 1 · Dataset', body: 'CSV / XLSX / Parquet ingestion lands here in Phase 02.' },
-  2: { title: 'Step 2 · Model', body: 'Model Registry + schema introspection lands here in Phase 03.' },
-  3: { title: 'Step 3 · Column Mapping', body: 'Interactive mapper + dry-run validator (Phase 05).' },
-  4: { title: 'Step 4 · Trajectory Queue', body: 'Virtualized table + queue builder lands here in Phase 06.' },
-  5: { title: 'Step 5 · 3D Stage & VCR', body: 'WebGL stage + 60 FPS VCR lands here in Phases 08–11.' },
-};
 
 function useHealthPoller() {
   const refreshHealth = useSystemStore((s) => s.refreshHealth);
@@ -53,9 +45,12 @@ function useShortcuts() {
   }, [setDiagnosticsOpen, setActiveStep, unlockedMaxStep]);
 }
 
+const BACKEND_START_COMMAND = 'cd backend; python -m uvicorn app.main:app --host 127.0.0.1 --port 30211';
+
 function OfflineBanner() {
   const { health, refreshHealth } = useSystemStore();
   const [retrying, setRetrying] = useState(false);
+  const [copied, setCopied] = useState(false);
   if (health && health.status !== 'offline') return null;
   const retry = async () => {
     setRetrying(true);
@@ -63,6 +58,15 @@ function OfflineBanner() {
       await refreshHealth();
     } finally {
       setRetrying(false);
+    }
+  };
+  const copyCommand = async () => {
+    try {
+      await navigator.clipboard.writeText(BACKEND_START_COMMAND);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
     }
   };
   return (
@@ -73,22 +77,30 @@ function OfflineBanner() {
     >
       <span style={{ color: 'var(--ml-class-1)' }}>● Backend offline.</span>
       <span className="font-mono-tabular" style={{ color: 'var(--text-secondary)' }}>
-        Start it with: uvicorn app.main:app --port 30211 (in backend/)
+        Backend is offline. Start it with:
       </span>
+      <code
+        className="font-mono-tabular cursor-pointer rounded px-2 py-0.5"
+        style={{ background: 'var(--surface-elevated)', color: 'var(--text-primary)' }}
+        onClick={() => void copyCommand()}
+        title="Click to copy"
+      >
+        {BACKEND_START_COMMAND}
+      </code>
       <button
         onClick={() => void retry()}
         disabled={retrying}
-        className="font-mono-tabular rounded px-2 py-1 disabled:opacity-50"
+        className="font-mono-tabular min-h-[32px] rounded px-2 py-1 disabled:opacity-50"
         style={{ border: '1px solid var(--border-strong)' }}
       >
-        {retrying ? 'Retrying…' : 'Copy command'.replace('Copy command', 'Retry now')}
+        {retrying ? 'Retrying…' : 'Retry now'}
       </button>
       <button
-        onClick={() => void navigator.clipboard.writeText('uvicorn app.main:app --port 30211')}
-        className="font-mono-tabular rounded px-2 py-1"
+        onClick={() => void copyCommand()}
+        className="font-mono-tabular min-h-[32px] rounded px-2 py-1"
         style={{ border: '1px solid var(--border-strong)' }}
       >
-        Copy command
+        {copied ? 'Copied ✓' : 'Copy command'}
       </button>
     </div>
   );
@@ -100,17 +112,18 @@ export default function App() {
   useStudioKeyboardShortcuts(true);
   const { activeStep, health, unlockStep } = useSystemStore();
 
-  const toggleTheme = useCallback(() => {
-    const el = document.documentElement;
-    el.dataset.theme = el.dataset.theme === 'light' ? 'dark' : 'light';
-  }, []);
-
-  const copy = STEP_COPY[activeStep];
   const lowMem = health?.memory.is_low_memory ?? false;
 
   return (
     <GlobalErrorBoundary>
       <div className="flex h-full flex-col" style={{ background: 'var(--bg-canvas)', color: 'var(--text-primary)' }}>
+        <a
+          href="#studio-main"
+          className="sr-only focus:not-sr-only focus:absolute focus:z-[60] focus:rounded focus:px-3 focus:py-2 focus:text-xs"
+          style={{ background: 'var(--ml-primary)', color: '#fff' }}
+        >
+          Skip to studio content
+        </a>
         <StudioHeader />
         <OfflineBanner />
         {lowMem && (
@@ -119,7 +132,11 @@ export default function App() {
           </div>
         )}
 
-        <main className="flex min-h-0 flex-1 items-stretch justify-center overflow-auto">
+        {/* Step 5 owns its viewport (no page scroll): canvas + dock + transport share 100% height. */}
+        <main
+          id="studio-main"
+          className={`flex min-h-0 flex-1 items-stretch justify-center ${activeStep === 5 ? 'overflow-hidden' : 'overflow-auto'}`}
+        >
           {activeStep === 1 ? (
             <DatasetStepView />
           ) : activeStep === 2 ? (
