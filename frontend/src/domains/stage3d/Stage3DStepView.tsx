@@ -15,6 +15,7 @@ import { usePlaybackStore } from '../playback/store/usePlaybackStore';
 import { Stage3DCanvas } from './components/Stage3DCanvas';
 import { CommandPaletteModal } from '../studio-ux/components/CommandPaletteModal';
 import { BakeMlvModal } from '../recording/components/BakeMlvModal';
+import { DualCompareModal } from '../recording/components/DualCompareModal';
 import { ExportStudioModal } from '../export-studio/components/ExportStudioModal';
 import { VideoRecordingIndicatorBar } from '../export-studio/components/VideoRecordingIndicatorBar';
 import { useExportKeyboardShortcuts } from '../export-studio/hooks/useExportKeyboardShortcuts';
@@ -187,6 +188,7 @@ export function Stage3DStepView() {
           <CommandPaletteModal />
           <AliasSettingsModal />
           <BakeMlvModal />
+          <DualCompareModal />
           <ExportStudioModal />
           <CinemaModeOverlay />
         </>

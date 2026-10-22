@@ -8,9 +8,18 @@ function ramColor(pct: number): string {
 }
 
 export function SystemStatusBar() {
-  const { health, lastError, refreshHealth } = useSystemStore();
+  const { health, lastError, refreshHealth, clearDiskCache } = useSystemStore();
   const mem = health?.memory;
   const pct = mem?.process_usage_percent ?? 0;
+
+  const purgeCache = async () => {
+    try {
+      const freed = await clearDiskCache();
+      window.alert(`Temp cache cleared — freed ${freed.toFixed(1)} MB.`);
+    } catch {
+      window.alert('Cache purge failed — is the backend online?');
+    }
+  };
 
   return (
     <footer
@@ -37,7 +46,18 @@ export function SystemStatusBar() {
           <span title={health.webgl2_renderer ?? ''}>
             GPU: {health.webgl2_renderer ? `WebGL2 Ready (${health.webgl2_renderer.slice(0, 32)})` : 'WebGL2: probing…'}
           </span>
+          <span title="100% air-gapped — no requests leave 127.0.0.1">
+            Offline Mode: 100% Local
+          </span>
           <span>Cache: {health.cache_size_mb.toFixed(1)} MB</span>
+          <button
+            onClick={() => void purgeCache()}
+            className="rounded px-2 py-0.5"
+            style={{ border: '1px solid var(--border-strong)', color: 'var(--text-primary)' }}
+            title="Purge .cache temp parquet files (DELETE /api/v1/system/cache)"
+          >
+            Clear Temp Cache
+          </button>
           <HardwareStatusPill />
         </>
       ) : (

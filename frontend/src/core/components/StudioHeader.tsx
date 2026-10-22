@@ -1,7 +1,10 @@
-import { Activity, Clapperboard, FileDown, Keyboard, MonitorCog, Package, Search, Tags, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { Activity, Clapperboard, FileDown, GitCompareArrows, Keyboard, LayoutGrid, MonitorCog, Package, Search, Tags, Trash2 } from 'lucide-react';
 import { useSystemStore, type WorkflowStep } from '../store/useSystemStore';
 import { useStudioLayoutStore } from '../../domains/studio-ux/store/useStudioLayoutStore';
 import { useRecordingStore } from '../../domains/recording/store/useRecordingStore';
+import { useDualCompareStore } from '../../domains/recording/store/useDualCompareStore';
+import { DemoGalleryModal } from '../../domains/recording/components/DemoGalleryModal';
 import { useExportStore } from '../../domains/export-studio/store/useExportStore';
 
 const STEPS: { id: WorkflowStep; label: string }[] = [
@@ -19,6 +22,8 @@ export function StudioHeader() {
   const toggleCinema = useStudioLayoutStore((s) => s.toggleCinema);
   const setAliasModal = useStudioLayoutStore((s) => s.setAliasModal);
   const setBakeModal = useRecordingStore((s) => s.setBakeModal);
+  const setCompareOpen = useDualCompareStore((s) => s.setCompareOpen);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const setExportModal = useExportStore((s) => s.setModal);
   const isReplayMode = useRecordingStore((s) => s.isReplayMode);
   const online = health?.status === 'healthy' || health?.status === 'degraded';
@@ -91,6 +96,24 @@ export function StudioHeader() {
       </nav>
 
       <div className="flex items-center gap-2">
+        <button
+          title="Instant 20-model demo gallery (offline)"
+          onClick={() => setGalleryOpen(true)}
+          className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium md:flex"
+          style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
+        >
+          <LayoutGrid size={14} />
+          Demo Gallery
+        </button>
+        <button
+          title="Compare 2 .mlv recordings side-by-side (Alt+D jumps conflicts)"
+          onClick={() => setCompareOpen(true)}
+          className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium md:flex"
+          style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
+        >
+          <GitCompareArrows size={14} />
+          Compare 2 Models
+        </button>
         <button
           title="Bake .mlv recording (MsgPack + Zstd)"
           onClick={() => setBakeModal(true)}
@@ -166,6 +189,7 @@ export function StudioHeader() {
           <Trash2 size={12} />
         </span>
       </div>
+      <DemoGalleryModal open={galleryOpen} onClose={() => setGalleryOpen(false)} />
     </header>
   );
 }
