@@ -8,6 +8,9 @@ import {
 export type { TrajectoryPoint3D };
 export type CameraPresetMode = 'isometric' | 'top_xy' | 'front_xz' | 'side_yz' | 'follow_ball';
 
+/** Phase 41 — dual-mode viewport: orthographic 2D planar vs 3D spatial. */
+export type ViewMode = '2d' | '3d';
+
 export const CAMERA_PRESET_KEYS: Record<string, CameraPresetMode> = {
   '1': 'isometric',
   '2': 'top_xy',
@@ -36,6 +39,11 @@ interface Stage3DState {
   showBackgroundCloud: boolean;
   showTickLabels: boolean;
   activeFrameIndex: number;
+  viewMode: ViewMode;
+  showBoundaryLines: boolean;
+  showConfidenceIsolines: boolean;
+  showHeatmap: boolean;
+  showRulers: boolean;
   isLoading: boolean;
   stageError: string | null;
   contextLost: boolean;
@@ -43,6 +51,12 @@ interface Stage3DState {
   fps: number;
   drawCalls: number;
   setCameraPreset: (preset: CameraPresetMode) => void;
+  setViewMode: (mode: ViewMode) => void;
+  toggleViewMode: () => void;
+  setShowBoundaryLines: (v: boolean) => void;
+  setShowConfidenceIsolines: (v: boolean) => void;
+  setShowHeatmap: (v: boolean) => void;
+  setShowRulers: (v: boolean) => void;
   setActiveFrameIndex: (frameIdx: number) => void;
   setAxes: (xIdx: number, yIdx: number) => Promise<void>;
   setSurfaceResolution: (res: number) => Promise<void>;
@@ -100,6 +114,11 @@ export const useStage3DStore = create<Stage3DState>((set, get) => ({
   showBackgroundCloud: true,
   showTickLabels: true,
   activeFrameIndex: 0,
+  viewMode: '3d',
+  showBoundaryLines: true,
+  showConfidenceIsolines: true,
+  showHeatmap: true,
+  showRulers: true,
   isLoading: false,
   stageError: null,
   contextLost: false,
@@ -108,6 +127,18 @@ export const useStage3DStore = create<Stage3DState>((set, get) => ({
   drawCalls: 0,
 
   setCameraPreset: (preset) => set({ cameraPreset: preset }),
+
+  setViewMode: (mode) => set({ viewMode: mode }),
+
+  toggleViewMode: () => set((s) => ({ viewMode: s.viewMode === '2d' ? '3d' : '2d' })),
+
+  setShowBoundaryLines: (v) => set({ showBoundaryLines: v }),
+
+  setShowConfidenceIsolines: (v) => set({ showConfidenceIsolines: v }),
+
+  setShowHeatmap: (v) => set({ showHeatmap: v }),
+
+  setShowRulers: (v) => set({ showRulers: v }),
 
   setActiveFrameIndex: (frameIdx) => {
     const { points } = get();

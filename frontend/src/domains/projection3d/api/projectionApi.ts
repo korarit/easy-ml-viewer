@@ -1,6 +1,7 @@
 /** Phase 09 — typed client for POST /api/v1/projection/surface-mesh. */
 import { apiFetch } from '../../../core/api/client';
 import type {
+  Contour2DPayload,
   LodLevel,
   PinningMode,
   ProjectionMode,
@@ -42,6 +43,85 @@ export interface FetchSurfaceParams {
   currentFrameIndex: number | null;
   useRobustRange: boolean;
   selectedRowIndices: number[];
+}
+
+interface Contour2DResponse {
+  grid_resolution: number;
+  x_feature: string;
+  y_feature: string;
+  x_range_raw: [number, number];
+  y_range_raw: [number, number];
+  prediction_task: 'classification' | 'regression';
+  classes: Array<string | number>;
+  heatmap_min: number;
+  heatmap_max: number;
+  heatmap_quantized: number[];
+  contours: Array<{
+    threshold: number;
+    class_index: number;
+    kind: 'decision' | 'confidence' | 'elevation';
+    line_segments: Array<[number, number, number, number]>;
+  }>;
+  response_curve_1d: { x_values_raw: number[]; y_pred: number[] } | null;
+  computation_time_ms: number;
+}
+
+export interface FetchContourParams {
+  datasetId: string;
+  modelId: string;
+  mappingId: string;
+  xFeature: string;
+  yFeature: string;
+  pinningMode: PinningMode;
+  currentFrameIndex: number | null;
+  useRobustRange: boolean;
+  gridResolution: number;
+  selectedRowIndices: number[];
+}
+
+/** Phase 41 — typed client for POST /api/v1/projection/contour-2d. */
+export async function fetchContour2D(
+  params: FetchContourParams,
+  signal?: AbortSignal,
+): Promise<Contour2DPayload> {
+  const data = await apiFetch<Contour2DResponse>('/api/v1/projection/contour-2d', {
+    method: 'POST',
+    body: JSON.stringify({
+      dataset_id: params.datasetId,
+      model_id: params.modelId,
+      mapping_id: params.mappingId,
+      x_feature: params.xFeature,
+      y_feature: params.yFeature,
+      pinning_mode: params.pinningMode,
+      current_frame_index: params.currentFrameIndex,
+      use_robust_range: params.useRobustRange,
+      grid_resolution: params.gridResolution,
+      selected_row_indices: params.selectedRowIndices,
+    }),
+    signal,
+  });
+  return {
+    gridResolution: data.grid_resolution,
+    xFeature: data.x_feature,
+    yFeature: data.y_feature,
+    xRangeRaw: data.x_range_raw,
+    yRangeRaw: data.y_range_raw,
+    predictionTask: data.prediction_task,
+    classes: data.classes,
+    heatmapMin: data.heatmap_min,
+    heatmapMax: data.heatmap_max,
+    heatmapQuantized: Uint8Array.from(data.heatmap_quantized),
+    contours: data.contours.map((c) => ({
+      threshold: c.threshold,
+      classIndex: c.class_index,
+      kind: c.kind,
+      lineSegments: c.line_segments,
+    })),
+    responseCurve1D: data.response_curve_1d
+      ? { xValuesRaw: data.response_curve_1d.x_values_raw, yPred: data.response_curve_1d.y_pred }
+      : null,
+    computationTimeMs: data.computation_time_ms,
+  };
 }
 
 export async function fetchSurfaceMesh(

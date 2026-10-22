@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import { fetchSurfaceMesh } from '../api/projectionApi';
+import { fetchContour2D, fetchSurfaceMesh } from '../api/projectionApi';
 import type {
   AvailableFeature,
   ColormapName,
+  Contour2DPayload,
   LodLevel,
   PinningMode,
   ProjectionMode,
@@ -28,6 +29,10 @@ interface ProjectionState {
   surfaceData: SurfaceMeshPayload | null;
   isLoading: boolean;
   projError: string | null;
+  /** Phase 41 — dense 2D contour grid for the planar viewport. */
+  contourData: Contour2DPayload | null;
+  contourLoading: boolean;
+  contourError: string | null;
   ensureDefaults: (features: AvailableFeature[]) => void;
   setXFeature: (name: string) => void;
   setYFeature: (name: string) => void;
@@ -50,10 +55,33 @@ interface ProjectionState {
     currentFrameIndex: number | null;
     featureNames: string[];
   }) => Promise<void>;
+  fetchContour: (params: {
+    datasetId: string;
+    modelId: string;
+    mappingId: string;
+    queueRowIndices: number[];
+    currentFrameIndex: number | null;
+  }) => Promise<void>;
   clearError: () => void;
 }
 
 let inFlightAbort: AbortController | null = null;
+let contourAbort: AbortController | null = null;
+/** Phase 41 — frontend contour cache so 2D↔3D toggles never refetch. */
+const contourCache = new Map<string, Contour2DPayload>();
+
+function contourKey(
+  datasetId: string,
+  modelId: string,
+  mappingId: string,
+  x: string,
+  y: string,
+  pinning: string,
+  frame: number | null,
+  robust: boolean,
+): string {
+  return [datasetId, modelId, mappingId, x, y, pinning, frame ?? -1, robust ? 1 : 0].join('|');
+}
 
 function buildAxisMeta(name: string, rawMin: number, rawMax: number, featureIndex: number | null): AxisScaleMeta {
   const lo = Number.isFinite(rawMin) ? rawMin : 0;
@@ -92,6 +120,9 @@ export const useProjectionStore = create<ProjectionState>((set, get) => ({
   surfaceData: null,
   isLoading: false,
   projError: null,
+  contourData: null,
+  contourLoading: false,
+  contourError: null,
 
   ensureDefaults: (features) => {
     if (features.length === 0) return;
@@ -222,5 +253,51 @@ export const useProjectionStore = create<ProjectionState>((set, get) => ({
     }
   },
 
-  clearError: () => set({ projError: null }),
+  fetchContour: async ({ datasetId, modelId, mappingId, queueRowIndices, currentFrameIndex }) => {
+    const s = get();
+    if (!datasetId || !modelId || !mappingId) return;
+    if (s.mode !== 'axis_explorer' || !s.xFeature || !s.yFeature) return;
+    const key = contourKey(
+      datasetId, modelId, mappingId, s.xFeature, s.yFeature,
+      s.pinningMode, s.pinningMode === 'current_row' ? currentFrameIndex : null,
+      s.useRobustRange,
+    );
+    const cached = contourCache.get(key);
+    if (cached) {
+      if (get().contourData !== cached) set({ contourData: cached, contourError: null });
+      return;
+    }
+    if (contourAbort) contourAbort.abort();
+    const controller = new AbortController();
+    contourAbort = controller;
+    set({ contourLoading: true, contourError: null });
+    try {
+      const data = await fetchContour2D(
+        {
+          datasetId,
+          modelId,
+          mappingId,
+          xFeature: s.xFeature,
+          yFeature: s.yFeature,
+          pinningMode: s.pinningMode,
+          currentFrameIndex: s.pinningMode === 'current_row' ? currentFrameIndex : null,
+          useRobustRange: s.useRobustRange,
+          gridResolution: 120,
+          selectedRowIndices: queueRowIndices,
+        },
+        controller.signal,
+      );
+      if (controller.signal.aborted) return;
+      contourCache.set(key, data);
+      set({ contourData: data });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      set({ contourError: err instanceof Error ? err.message : String(err) });
+    } finally {
+      if (contourAbort === controller) contourAbort = null;
+      set({ contourLoading: false });
+    }
+  },
+
+  clearError: () => set({ projError: null, contourError: null }),
 }));

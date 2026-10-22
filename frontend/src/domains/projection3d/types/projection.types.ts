@@ -14,6 +14,33 @@ export interface AvailableFeature {
   importance: number | null;
 }
 
+/** Phase 41 — one vector isoline set (mirrors ContourLevel2D). */
+export interface ContourLevel2D {
+  threshold: number;
+  classIndex: number;
+  kind: 'decision' | 'confidence' | 'elevation';
+  /** World-coord segments [x1, y1, x2, y2] in [-5, +5]. */
+  lineSegments: Array<[number, number, number, number]>;
+}
+
+/** Phase 41 — dense 2D contour payload (mirrors Contour2DResponse). */
+export interface Contour2DPayload {
+  gridResolution: number;
+  xFeature: string;
+  yFeature: string;
+  xRangeRaw: [number, number];
+  yRangeRaw: [number, number];
+  predictionTask: 'classification' | 'regression';
+  classes: Array<string | number>;
+  heatmapMin: number;
+  heatmapMax: number;
+  /** Row-major Ny*Nx uint8 field; decode with min + (q/255)*(max-min). */
+  heatmapQuantized: Uint8Array;
+  contours: ContourLevel2D[];
+  responseCurve1D: { xValuesRaw: number[]; yPred: number[] } | null;
+  computationTimeMs: number;
+}
+
 export interface SurfaceMeshPayload {
   gridResolution: number;
   xFeature: string;
