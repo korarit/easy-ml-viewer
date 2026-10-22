@@ -39,6 +39,7 @@ from app.domains.model_engine.adapters.trees import adaboost as _adaboost_adapte
 from app.domains.model_engine.adapters.trees import extra_trees as _extra_trees_adapter  # noqa: F401
 from app.domains.model_engine.adapters.trees import random_forest as _random_forest_adapter  # noqa: F401
 from app.domains.model_engine.adapters.neural_onnx import mlp_adapter as _mlp_adapter  # noqa: F401
+from app.domains.model_engine.adapters.neural_onnx import pipeline_adapter as _pipeline_adapter  # noqa: F401,F841
 
 # Phase 33-35: native booster formats load straight into xgb.Booster / lgb.Booster / CatBoost .cbm.
 _ALLOWED_MODEL_SUFFIXES = {".joblib", ".pkl", ".pickle", ".json", ".ubj", ".model", ".xgb", ".txt", ".lgb", ".cbm"}
@@ -171,9 +172,34 @@ class ModelIngestUseCase:
         MemoryGuard.assert_can_ingest_file(1024)  # trivially small; schema work is in-RAM light
         predict_obj, final_est, steps = UniversalSchemaDetector.unwrap_model_container(obj)
         UniversalSchemaDetector.validate_is_fitted(final_est)
+        # Phase 37: pipelines expose the RAW input schema (feature_names_in_
+        # from step 0). The terminal estimator alone would report the
+        # transformed width (e.g. 19 OHE cols instead of 8 raw cols).
+        from app.domains.model_engine.adapters.neural_onnx.pipeline_adapter import (  # noqa: PLC0415
+            is_sklearn_pipeline,
+        )
+
+        _is_pipe = bool(is_sklearn_pipeline(predict_obj) or is_sklearn_pipeline(obj))
         adapter = ModelRegistry.resolve_adapter(final_est, file_ext)
-        schema = UniversalSchemaDetector.extract_schema(final_est)
-        weights = adapter.extract_feature_weights(final_est, schema.n_features_in)
+        if _is_pipe:
+            try:
+                schema = UniversalSchemaDetector.extract_schema(predict_obj)
+            except Exception:
+                schema = UniversalSchemaDetector.extract_schema(final_est)
+            # Raw-space weights via lineage aggregation (None-safe fallback).
+            try:
+                from app.domains.model_engine.adapters.neural_onnx.pipeline_adapter import (  # noqa: PLC0415
+                    SklearnPipelineAdapter,
+                )
+
+                weights = SklearnPipelineAdapter().extract_feature_weights(
+                    predict_obj, schema.n_features_in
+                )
+            except Exception:
+                weights = [None for _ in range(schema.n_features_in)]
+        else:
+            schema = UniversalSchemaDetector.extract_schema(final_est)
+            weights = adapter.extract_feature_weights(final_est, schema.n_features_in)
         for feature, weight in zip(schema.features, weights):
             feature.learned_weight_or_importance = weight
         try:

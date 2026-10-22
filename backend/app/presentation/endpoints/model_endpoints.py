@@ -88,10 +88,23 @@ def trace_preview(
     body: TracePreviewRequest,
     use_case: ModelIngestUseCase = Depends(get_model_use_case),
 ) -> dict[str, Any]:
+    from app.domains.model_engine.adapters.neural_onnx.pipeline_adapter import (  # noqa: PLC0415
+        SklearnPipelineAdapter,
+        is_sklearn_pipeline,
+    )
+
     model_obj = use_case.get_model(model_id)
-    _, final_est, _ = UniversalSchemaDetector.unwrap_model_container(model_obj)
-    adapter = ModelRegistry.resolve_adapter(final_est, ".joblib")
-    schema = UniversalSchemaDetector.extract_schema(final_est)
+    predict_obj, final_est, _ = UniversalSchemaDetector.unwrap_model_container(model_obj)
+    _is_pipe = bool(is_sklearn_pipeline(predict_obj) or is_sklearn_pipeline(model_obj))
+    if _is_pipe:
+        try:
+            schema = UniversalSchemaDetector.extract_schema(predict_obj)
+        except Exception:
+            schema = UniversalSchemaDetector.extract_schema(final_est)
+        adapter: Any = SklearnPipelineAdapter()
+    else:
+        adapter = ModelRegistry.resolve_adapter(final_est, ".joblib")
+        schema = UniversalSchemaDetector.extract_schema(final_est)
     feature_names = body.feature_names or [f.name for f in schema.features]
     try:
         X = np.asarray(body.rows, dtype=np.float32)
@@ -141,10 +154,23 @@ def surface_preview(
         _surface_cache.move_to_end(cache_key)
         return _surface_cache[cache_key]
 
+    from app.domains.model_engine.adapters.neural_onnx.pipeline_adapter import (  # noqa: PLC0415
+        SklearnPipelineAdapter as _PipeAdapter,
+        is_sklearn_pipeline as _is_pipe_fn,
+    )
+
     model_obj = use_case.get_model(model_id)
-    _, final_est, _ = UniversalSchemaDetector.unwrap_model_container(model_obj)
-    adapter = ModelRegistry.resolve_adapter(final_est, ".joblib")
-    schema = UniversalSchemaDetector.extract_schema(final_est)
+    predict_obj, final_est, _ = UniversalSchemaDetector.unwrap_model_container(model_obj)
+    _is_pipe_surface = bool(_is_pipe_fn(predict_obj) or _is_pipe_fn(model_obj))
+    if _is_pipe_surface:
+        try:
+            schema = UniversalSchemaDetector.extract_schema(predict_obj)
+        except Exception:
+            schema = UniversalSchemaDetector.extract_schema(final_est)
+        adapter = _PipeAdapter()
+    else:
+        adapter = ModelRegistry.resolve_adapter(final_est, ".joblib")
+        schema = UniversalSchemaDetector.extract_schema(final_est)
     t0 = time.perf_counter()
     grid_spec = GridSpec3D(
         axis_x_feature_index=body.axis_x_feature_index,
