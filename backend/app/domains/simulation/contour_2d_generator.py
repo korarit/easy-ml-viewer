@@ -29,6 +29,13 @@ except ImportError:  # pragma: no cover - extractor module missing
     Linear2DGeometry = None  # type: ignore[assignment,misc]
     extract_linear_2d_geometry = None  # type: ignore[assignment]
 
+try:  # Phase 43 — optional distance/kernel overlays (same fail-safe contract).
+    from app.domains.model_engine.adapters.distance.distance_2d_extractor import (
+        Distance2DExtractor,
+    )
+except ImportError:  # pragma: no cover - extractor module missing
+    Distance2DExtractor = None  # type: ignore[assignment,misc]
+
 #: Batch size shared with the Phase-09 surface path (memory budget §5.1).
 PREDICT_CHUNK_SIZE = 2_500
 
@@ -42,12 +49,23 @@ CONFIDENCE_LEVELS = (0.6, 0.7, 0.8, 0.9)
 DECISION_THRESHOLD = 0.5
 
 
+#: Margin isolines for binary score-field models (SVM f = ±1).
+MARGIN_LEVELS = (1.0, -1.0)
+
+#: SV halos embedded in the contour DTO (keeps the ≤150 KB SLA; overflow
+#: is |dual|-ranked with an explicit truncation flag for the client badge).
+CONTOUR_SV_HALO_CAP = 400
+
+
 class ContourLevel2D(BaseModel):
     """One vector isoline set at a fixed scalar threshold."""
 
     threshold: float = Field(description="Isoline level (e.g. 0.5 = decision boundary)")
     class_index: int = Field(default=0, ge=0)
-    kind: str = Field(default="decision", description="decision | confidence | elevation")
+    kind: str = Field(
+        default="decision",
+        description="decision | confidence | elevation | margin (SVM f = ±1)",
+    )
     line_segments: list[list[float]] = Field(
         default_factory=list,
         description="Polyline segments as [x1, y1, x2, y2] in world coords [-5, +5]",
@@ -85,6 +103,15 @@ class Contour2DResponse(BaseModel):
     linear_2d: dict[str, Any] | None = Field(
         default=None,
         description="Exact 2D decision line / margin / sparsity payload for linear models",
+    )
+    # Phase 43 — distance & kernel overlays (None when N/A).
+    svm_2d: dict[str, Any] | None = Field(
+        default=None,
+        description="Support-vector halos in world coords + kernel metadata",
+    )
+    knn_2d: dict[str, Any] | None = Field(
+        default=None,
+        description="Static KNN descriptor (k, weights, metric) for the radar overlay",
     )
     computation_time_ms: float = 0.0
 
@@ -141,6 +168,54 @@ def _chunked_proba_matrix(model_obj: Any, final_est: Any, matrix: np.ndarray) ->
         return np.clip(np.where(np.isfinite(out), out, 0.0), 0.0, 1.0)
     except Exception:
         return None
+
+
+def _chunked_binary_scores(model_obj: Any, final_est: Any, matrix: np.ndarray) -> np.ndarray | None:
+    """Binary ``decision_function`` scores ``(N,)`` in chunks, else ``None``.
+
+    Phase 43 — powers the smooth SVM score field (``f = 0`` boundary plus
+    ``f = ±1`` margins). Only 1-D outputs qualify; multiclass OvO matrices
+    and missing attributes fall through to the label-field path.
+    """
+    est = model_obj if hasattr(model_obj, "decision_function") else final_est
+    if not hasattr(est, "decision_function"):
+        return None
+    try:
+        mat = np.ascontiguousarray(matrix, dtype=np.float32)
+        first = np.asarray(est.decision_function(mat[: min(PREDICT_CHUNK_SIZE, mat.shape[0])]), dtype=np.float64)
+        if first.ndim == 2 and first.shape[1] == 1:
+            pass  # single-column scores qualify as binary
+        elif first.ndim != 1:
+            return None
+        out = np.empty((mat.shape[0],), dtype=np.float64)
+        offset = 0
+        while offset < mat.shape[0]:
+            scores = np.asarray(
+                est.decision_function(mat[offset : offset + PREDICT_CHUNK_SIZE]), dtype=np.float64
+            )
+            if scores.ndim == 2:
+                if scores.shape[1] != 1:
+                    return None
+                scores = scores[:, 0]
+            out[offset : offset + scores.shape[0]] = scores
+            del scores
+            offset += PREDICT_CHUNK_SIZE
+        if not np.isfinite(out).any():
+            return None
+        return np.where(np.isfinite(out), out, 0.0)
+    except Exception:
+        return None
+
+
+def _expit(z: np.ndarray) -> np.ndarray:
+    """Numerically stable sigmoid (score heatmap for margin models)."""
+    z = np.asarray(z, dtype=np.float64)
+    out = np.empty_like(z)
+    pos = z >= 0
+    out[pos] = 1.0 / (1.0 + np.exp(-z[pos]))
+    e = np.exp(z[~pos])
+    out[~pos] = e / (1.0 + e)
+    return out
 
 
 def _marching_squares_segments(
@@ -299,21 +374,103 @@ class Contour2DGenerator:
             except Exception:
                 linear_2d = None
 
+        # Phase 43 — static distance/kernel descriptors (fail-safe, < 40 KB).
+        svm_2d: dict[str, Any] | None = None
+        knn_2d: dict[str, Any] | None = None
+        if Distance2DExtractor is not None:
+            try:
+                svm_state = Distance2DExtractor.extract_svm_2d_state(
+                    model_obj,
+                    x_idx=int(x_feature_idx),
+                    y_idx=int(y_feature_idx),
+                )
+                if svm_state is not None and not svm_state.get("is_linear_no_sv", False):
+                    halos = svm_state.get("support_vectors_2d", [])
+                    # Contour DTO budget (§6.2 ≤ 150 KB): embed at most 400
+                    # halos (already |dual|-ranked) with raw coords stripped —
+                    # world coords + train_index + dual carry the overlay.
+                    # The per-halo duals suffice; the full resolved dual row
+                    # stays extractor-side only.
+                    # The grouped-path client overlay stays at ≤3 draw calls;
+                    # the extractor keeps the full set for direct use.
+                    if len(halos) > CONTOUR_SV_HALO_CAP:
+                        halos = halos[:CONTOUR_SV_HALO_CAP]
+                        svm_state["support_vectors_2d"] = halos
+                        svm_state["halos_truncated"] = True
+                    svm_state["dual_coefs"] = []
+                    if halos:
+                        hx = np.asarray([h["x"] for h in halos], dtype=np.float32)
+                        hy = np.asarray([h["y"] for h in halos], dtype=np.float32)
+                        wx = WorldCoordinateScaler.to_world_coords(hx, x_scale).astype(np.float64)
+                        wy = WorldCoordinateScaler.to_world_coords(hy, y_scale).astype(np.float64)
+                        for h, ex, ey in zip(halos, wx.tolist(), wy.tolist()):
+                            h["x_world"] = round(float(ex), 2)
+                            h["y_world"] = round(float(ey), 2)
+                            h.pop("x", None)
+                            h.pop("y", None)
+                            if isinstance(h.get("dual_coef"), float):
+                                h["dual_coef"] = round(h["dual_coef"], 4)
+                    svm_2d = svm_state
+                elif svm_state is not None:
+                    svm_2d = svm_state
+            except Exception:
+                svm_2d = None
+            try:
+                final_name = type(final_est).__name__ if final_est is not None else ""
+                if final_name in (
+                    "KNeighborsClassifier", "KNeighborsRegressor",
+                    "RadiusNeighborsClassifier", "RadiusNeighborsRegressor",
+                ):
+                    try:
+                        k_val = int(getattr(final_est, "n_neighbors", 0))
+                    except (TypeError, ValueError):
+                        k_val = 0
+                    try:
+                        radius_val = float(getattr(final_est, "radius", 0.0))
+                    except (TypeError, ValueError):
+                        radius_val = None
+                    knn_2d = {
+                        "is_knn_model": True,
+                        "model_type": final_name,
+                        "k": k_val,
+                        "weights_mode": str(getattr(final_est, "weights", "uniform") or "uniform"),
+                        "metric": str(getattr(final_est, "effective_metric_", getattr(final_est, "metric", "euclidean"))),
+                        "is_radius_model": final_name.startswith("RadiusNeighbors"),
+                        "radius": radius_val,
+                    }
+            except Exception:
+                knn_2d = None
+
         if prediction_task == "classification":
             proba = _chunked_proba_matrix(model_obj, final_est, grid)
             if proba is None:
-                # No predict_proba (e.g. LinearSVC): fall back to label field.
-                labels = _chunked_predict(adapter, model_obj, grid)
-                field = labels.reshape((res, res))
-                heat = field
-                levels = sorted(set(float(v) for v in np.unique(field).tolist()))
-                for k, lv in enumerate(levels):
-                    if k == 0:
-                        continue
-                    segs = _marching_squares_segments(gx_w, gy_w, field, (lv + levels[k - 1]) / 2.0)
-                    if segs:
-                        contours.append(ContourLevel2D(threshold=round(float(lv), 4), class_index=k, kind="decision", line_segments=segs))
-                prediction_task = "classification"
+                scores = _chunked_binary_scores(model_obj, final_est, grid)
+                if scores is not None:
+                    # Phase 43 — binary score field (SVC/RBF, LinearSVC, ...):
+                    # smooth f = 0 boundary plus f = ±1 margin isolines.
+                    field = scores.reshape((res, res))
+                    heat = _expit(field)
+                    boundary = _marching_squares_segments(gx_w, gy_w, field, 0.0)
+                    if boundary:
+                        contours.append(ContourLevel2D(threshold=0.0, class_index=1, kind="decision", line_segments=boundary))
+                    for lv in MARGIN_LEVELS:
+                        segs = _marching_squares_segments(gx_w, gy_w, field, lv)
+                        if segs:
+                            contours.append(ContourLevel2D(threshold=lv, class_index=1, kind="margin", line_segments=segs))
+                    prediction_task = "classification"
+                else:
+                    # No scores either (multiclass OvO, trees): label field.
+                    labels = _chunked_predict(adapter, model_obj, grid)
+                    field = labels.reshape((res, res))
+                    heat = field
+                    levels = sorted(set(float(v) for v in np.unique(field).tolist()))
+                    for k, lv in enumerate(levels):
+                        if k == 0:
+                            continue
+                        segs = _marching_squares_segments(gx_w, gy_w, field, (lv + levels[k - 1]) / 2.0)
+                        if segs:
+                            contours.append(ContourLevel2D(threshold=round(float(lv), 4), class_index=k, kind="decision", line_segments=segs))
+                    prediction_task = "classification"
             elif proba.shape[1] == 2:
                 field = proba[:, 1].reshape((res, res))
                 heat = field
@@ -399,5 +556,7 @@ class Contour2DGenerator:
             contours=contours,
             response_curve_1d=response_curve,
             linear_2d=linear_2d,
+            svm_2d=svm_2d,
+            knn_2d=knn_2d,
             computation_time_ms=elapsed_ms,
         )

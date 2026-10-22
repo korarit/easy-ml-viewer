@@ -79,6 +79,50 @@ class ProjectionContourRequest(BaseModel):
     selected_row_indices: list[int] = Field(default_factory=list)
 
 
+class ProjectionKnnFrameRequest(BaseModel):
+    """Phase 43 — per-frame KNN radar state for the 2D planar viewport."""
+
+    dataset_id: str = Field(min_length=1)
+    model_id: str = Field(min_length=1)
+    mapping_id: str = Field(min_length=1)
+    x_feature: str = Field(min_length=1)
+    y_feature: str = Field(min_length=1)
+    row_index: int = Field(ge=0, description="Dataset row serving as the radar query")
+
+
+class KnnFrameNeighbor(BaseModel):
+    train_index: int = 0
+    x_world: float = 0.0
+    y_world: float = 0.0
+    distance_full: float = 0.0
+    distance_2d: float = 0.0
+    vote_weight: float = 0.0
+    rank: int = 0
+    label: Any = None
+
+
+class KnnFrame2DResponse(BaseModel):
+    """Per-frame radar payload (world coords; ellipse radii for anisotropy)."""
+
+    x_feature: str = ""
+    y_feature: str = ""
+    row_index: int = 0
+    query_world: list[float] = Field(default_factory=lambda: [0.0, 0.0])
+    radar_radius_raw: float = 0.0
+    radar_radius_world: list[float] = Field(default_factory=lambda: [0.0, 0.0])
+    neighbors: list[KnnFrameNeighbor] = Field(default_factory=list)
+    votes: dict[str, float] = Field(default_factory=dict)
+    predicted: Any = None
+    k: int = 0
+    weights_mode: str = "uniform"
+    metric: str = "euclidean"
+    is_radius_model: bool = False
+    outlier: bool = False
+    display_capped: bool = False
+    total_neighbors: int = 0
+    computation_time_ms: float = 0.0
+
+
 def _resolve_feature_index(items: list[Any], name: str) -> int | None:
     for item in items:
         if item.dataset_column_name == name or item.model_feature_name == name:
@@ -288,6 +332,139 @@ class ProjectionOrchestrator:
     async def build_contour(self, req: ProjectionContourRequest) -> Any:
         """Phase 41 — dense 2D decision-boundary grid (delegates to the shared resolver)."""
         return await _resolve_contour_frame(req, self)
+
+    async def build_knn_frame(self, req: ProjectionKnnFrameRequest) -> KnnFrame2DResponse:
+        """Phase 43 — per-frame KNN radar state (one ``kneighbors`` call, < 5 ms)."""
+        from app.core.math_3d import WorldCoordinateScaler
+        from app.domains.model_engine.adapters.distance.distance_2d_extractor import (
+            Distance2DExtractor,
+        )
+
+        started = time.perf_counter()
+        mapping = self._mappings.get(req.mapping_id)
+        if mapping.dataset_id != req.dataset_id or mapping.model_id != req.model_id:
+            raise DomainException(
+                code="MAPPING_MISMATCH",
+                message="Mapping does not belong to the given dataset/model pair",
+                details={"mapping_id": req.mapping_id},
+                http_status=422,
+            )
+        items = sorted(mapping.items, key=lambda x: x.feature_index)
+        if not items:
+            raise DomainException(
+                code="PROJECTION_NO_FEATURES",
+                message="Mapping has no feature columns — map at least one feature first",
+                http_status=422,
+            )
+        resolved_x = _resolve_feature_index(items, req.x_feature)
+        resolved_y = _resolve_feature_index(items, req.y_feature)
+        if resolved_x is None or resolved_y is None:
+            raise DomainException(
+                code="PROJECTION_UNKNOWN_FEATURE",
+                message=f"Unknown feature(s): x='{req.x_feature}', y='{req.y_feature}'",
+                http_status=422,
+            )
+
+        model_obj = self._models.get_model(req.model_id)
+        _, final_est, _ = UniversalSchemaDetector.unwrap_model_container(model_obj)
+        if not hasattr(final_est if final_est is not None else model_obj, "kneighbors"):
+            holder = final_est if final_est is not None else model_obj
+            if not hasattr(holder, "kneighbors") and not hasattr(model_obj, "kneighbors"):
+                raise DomainException(
+                    code="NOT_KNN_MODEL",
+                    message="knn-frame-2d requires a fitted nearest-neighbors model",
+                    http_status=422,
+                )
+
+        feature_cols = [i.dataset_column_name for i in items if i.dataset_column_name]
+        parquet_path = self._datasets._require(req.dataset_id)
+        import pyarrow.parquet as pq
+
+        pf = pq.ParquetFile(parquet_path, memory_map=True)
+        total_rows = int(pf.metadata.num_rows)
+        if req.row_index >= total_rows:
+            raise DomainException(
+                code="PROJECTION_ROW_OUT_OF_RANGE",
+                message=f"Row index {req.row_index} exceeds dataset size ({total_rows} rows)",
+                http_status=422,
+            )
+
+        df = self._datasets.load_dataframe(req.dataset_id, columns=feature_cols)
+        try:
+            df = df.reindex(columns=feature_cols)
+            X = TypeCastingEngine.build_float32_matrix(df, items)
+        finally:
+            del df
+        query = X[req.row_index].astype(np.float64, copy=True)
+        feature_names = [i.dataset_column_name or i.model_feature_name for i in items]
+
+        state = await asyncio.to_thread(
+            Distance2DExtractor.extract_knn_2d_state,
+            model_obj,
+            query,
+            resolved_x,
+            resolved_y,
+        )
+        del X
+        if state is None:
+            raise DomainException(
+                code="KNN_FRAME_UNAVAILABLE",
+                message="KNN radar state unavailable (pipelined or unsupported neighbor model)",
+                http_status=422,
+            )
+
+        # Scales must match the contour viewport exactly, so rebuild them
+        # from the dataset column (same source as the contour path).
+        df2 = self._datasets.load_dataframe(req.dataset_id, columns=feature_cols)
+        try:
+            df2 = df2.reindex(columns=feature_cols)
+            X2 = TypeCastingEngine.build_float32_matrix(df2, items)
+        finally:
+            del df2
+        x_scale = WorldCoordinateScaler.build_axis_scale(feature_names[resolved_x], X2[:, resolved_x])
+        y_scale = WorldCoordinateScaler.build_axis_scale(feature_names[resolved_y], X2[:, resolved_y])
+        del X2
+
+        def _w(v: float, scale: Any) -> float:
+            arr = WorldCoordinateScaler.to_world_coords(np.asarray([v], dtype=np.float32), scale)
+            return round(float(arr[0]), 3)
+
+        qx, qy = state["query_2d"]
+        x_span = max(float(x_scale.raw_max - x_scale.raw_min), 1e-12)
+        y_span = max(float(y_scale.raw_max - y_scale.raw_min), 1e-12)
+        r = float(state["radar_radius_2d"])
+        neighbors = [
+            KnnFrameNeighbor(
+                train_index=int(n["ref_index"]),
+                x_world=_w(float(n["x"]), x_scale),
+                y_world=_w(float(n["y"]), y_scale),
+                distance_full=float(n["distance_full"]),
+                distance_2d=float(n["distance_2d"]),
+                vote_weight=float(n["vote_weight"]),
+                rank=int(n["rank"]),
+                label=n["label"],
+            )
+            for n in state["neighbors_2d"]
+        ]
+        return KnnFrame2DResponse(
+            x_feature=feature_names[resolved_x],
+            y_feature=feature_names[resolved_y],
+            row_index=int(req.row_index),
+            query_world=[_w(float(qx), x_scale), _w(float(qy), y_scale)],
+            radar_radius_raw=r,
+            radar_radius_world=[round(r / x_span * 10.0, 4), round(r / y_span * 10.0, 4)],
+            neighbors=neighbors,
+            votes={str(k): float(v) for k, v in state["votes"].items()},
+            predicted=state["predicted"],
+            k=int(state["k"]),
+            weights_mode=str(state["weights_mode"]),
+            metric=str(state["metric"]),
+            is_radius_model=bool(state["is_radius_model"]),
+            outlier=bool(state["outlier"]),
+            display_capped=bool(state["display_capped"]),
+            total_neighbors=int(state["total_neighbors"]),
+            computation_time_ms=round((time.perf_counter() - started) * 1000.0, 2),
+        )
 
 
 class _ContourCache:
