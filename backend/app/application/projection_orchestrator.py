@@ -101,6 +101,44 @@ class ProjectionBoostFrameRequest(BaseModel):
     row_index: int = Field(ge=0, description="Dataset row serving as the SHAP query")
 
 
+class ProjectionDualCompare2DRequest(BaseModel):
+    """Phase 48 — synchronized dual-model 2D compare on one (X, Y) plane."""
+
+    dataset_id: str = Field(min_length=1)
+    model_a_id: str = Field(min_length=1)
+    model_b_id: str = Field(min_length=1)
+    mapping_id: str = Field(min_length=1, description="Model-A mapping defining axes + feature columns")
+    x_feature: str = Field(min_length=1)
+    y_feature: str = Field(min_length=1)
+    pinning_mode: PinningMode = PinningMode.MEDIAN
+    current_frame_index: int | None = None
+    use_robust_range: bool = False
+    grid_resolution: int = Field(default=120, ge=16, le=200)
+    selected_row_indices: list[int] = Field(default_factory=list)
+
+
+class DualContour2DResponse(BaseModel):
+    """Phase 48 — dual 2D compare payload (both contours + conflict mask)."""
+
+    x_feature: str = ""
+    y_feature: str = ""
+    grid_resolution: int = 120
+    prediction_task: str = "classification"
+    disagreement_pct: float = 0.0
+    agreement_pct: float = 100.0
+    n_cells: int = 0
+    n_conflict_cells: int = 0
+    consensus_notice: str = ""
+    conflict_mask: list[int] = Field(default_factory=list)
+    conflict_mask_downsampled: bool = False
+    conflict_frame_indices: list[int] = Field(default_factory=list)
+    model_a_name: str = ""
+    model_b_name: str = ""
+    contour_a: dict[str, Any] = Field(default_factory=dict)
+    contour_b: dict[str, Any] = Field(default_factory=dict)
+    computation_time_ms: float = 0.0
+
+
 class KnnFrameNeighbor(BaseModel):
     train_index: int = 0
     x_world: float = 0.0
@@ -594,6 +632,193 @@ class ProjectionOrchestrator:
             family=str(state["family"]),
             algorithm=str(state["algorithm"]),
             shap=BoostFrameShap(**state["shap_vector"]) if state.get("shap_vector") else None,
+            computation_time_ms=round((time.perf_counter() - started) * 1000.0, 2),
+        )
+
+
+    async def build_dual_contour(self, req: ProjectionDualCompare2DRequest) -> DualContour2DResponse:
+        """Phase 48 — sample both models on the same (X, Y) grid, then diff.
+
+        Both contours share one grid (same ranges, pinning, resolution) so the
+        conflict mask is scale-exact. Frame pins come from chunked
+        ``predict_batch`` on the queued rows for both adapters (≤2,500/chunk).
+        """
+        from app.domains.simulation.contour_2d_generator import Contour2DGenerator
+        from app.domains.simulation.dual_2d_compare_service import (
+            compare_label_fields,
+            frame_disagreement_indices,
+            summary_to_response,
+        )
+
+        started = time.perf_counter()
+        mapping = self._mappings.get(req.mapping_id)
+        if mapping.dataset_id != req.dataset_id or mapping.model_id != req.model_a_id:
+            raise DomainException(
+                code="MAPPING_MISMATCH",
+                message="mapping_id must belong to dataset + model_a (axes owner)",
+                details={"mapping_id": req.mapping_id},
+                http_status=422,
+            )
+        items = sorted(mapping.items, key=lambda x: x.feature_index)
+        if not items:
+            raise DomainException(
+                code="PROJECTION_NO_FEATURES",
+                message="Mapping has no feature columns — map at least one feature first",
+                http_status=422,
+            )
+        resolved_x = _resolve_feature_index(items, req.x_feature)
+        resolved_y = _resolve_feature_index(items, req.y_feature)
+        if resolved_x is None or resolved_y is None:
+            raise DomainException(
+                code="PROJECTION_UNKNOWN_FEATURE",
+                message=f"Unknown feature(s): x='{req.x_feature}', y='{req.y_feature}'",
+                http_status=422,
+            )
+        if resolved_x == resolved_y and len(items) >= 2:
+            raise DomainException(
+                code="PROJECTION_DUPLICATE_AXES",
+                message="X and Y axes must be different features (use swapAxes on the client)",
+                http_status=422,
+            )
+        res = max(16, min(200, int(req.grid_resolution)))
+
+        feature_cols = [i.dataset_column_name for i in items if i.dataset_column_name]
+        df = self._datasets.load_dataframe(req.dataset_id, columns=feature_cols)
+        try:
+            df = df.reindex(columns=feature_cols)
+            X = TypeCastingEngine.build_float32_matrix(df, items)
+        finally:
+            del df
+
+        model_a = self._models.get_model(req.model_a_id)
+        model_b = self._models.get_model(req.model_b_id)
+        _, final_a, _ = UniversalSchemaDetector.unwrap_model_container(model_a)
+        _, final_b, _ = UniversalSchemaDetector.unwrap_model_container(model_b)
+        adapter_a = ModelRegistry.resolve_adapter(final_a, ".joblib")
+        try:
+            adapter_b = ModelRegistry.resolve_adapter(final_b, ".joblib")
+        except Exception as exc:
+            raise DomainException(
+                code="DUAL2D_MODEL_B_UNSUPPORTED",
+                message=f"Model B is not supported for 2D compare: {exc}",
+                http_status=422,
+            ) from exc
+        # E48.5 — both models must accept the shared plane width.
+        for tag, holder in (("A", final_a if final_a is not None else model_a),
+                             ("B", final_b if final_b is not None else model_b)):
+            n_in = getattr(holder, "n_features_in_", None)
+            if n_in is not None and int(n_in) != X.shape[1]:
+                raise DomainException(
+                    code="DUAL2D_FEATURE_MISMATCH",
+                    message=(
+                        f"Model {tag} expects {int(n_in)} features but the shared "
+                        f"plane has {X.shape[1]} — align X/Y axes and mappings first"
+                    ),
+                    http_status=422,
+                )
+
+        current_row_values: np.ndarray | None = None
+        selected = [int(i) for i in (req.selected_row_indices or []) if int(i) >= 0]
+        if req.pinning_mode == PinningMode.CURRENT_ROW and selected:
+            frame = req.current_frame_index if req.current_frame_index is not None else 0
+            frame = max(0, min(int(frame), len(selected) - 1))
+            if 0 <= selected[frame] < X.shape[0]:
+                current_row_values = X[selected[frame]].astype(np.float32, copy=True)
+
+        feature_names = [i.dataset_column_name or i.model_feature_name for i in items]
+        contour_a = await asyncio.to_thread(
+            Contour2DGenerator.generate_contour,
+            adapter=adapter_a,
+            model_obj=model_a,
+            final_est=final_a,
+            X=X,
+            x_feature_idx=resolved_x,
+            y_feature_idx=resolved_y,
+            x_feature_name=feature_names[resolved_x],
+            y_feature_name=feature_names[resolved_y],
+            grid_resolution=res,
+            pinning_mode=req.pinning_mode.value,
+            current_row_values=current_row_values,
+            use_robust_range=bool(req.use_robust_range),
+        )
+        contour_b = await asyncio.to_thread(
+            Contour2DGenerator.generate_contour,
+            adapter=adapter_b,
+            model_obj=model_b,
+            final_est=final_b,
+            X=X,
+            x_feature_idx=resolved_x,
+            y_feature_idx=resolved_y,
+            x_feature_name=feature_names[resolved_x],
+            y_feature_name=feature_names[resolved_y],
+            grid_resolution=res,
+            pinning_mode=req.pinning_mode.value,
+            current_row_values=current_row_values,
+            use_robust_range=bool(req.use_robust_range),
+        )
+
+        def _decode_heatmap(c: Any) -> np.ndarray:
+            q = np.asarray(c.heatmap_quantized, dtype=np.float64).ravel()
+            span = float(c.heatmap_max - c.heatmap_min)
+            if q.size == 0 or span < 1e-12:
+                return np.zeros((res * res,), dtype=np.float32)
+            norm = np.clip(q / 255.0, 0.0, 1.0)
+            return (float(c.heatmap_min) + norm * span).astype(np.float32)
+
+        task = contour_a.prediction_task if contour_a.prediction_task == contour_b.prediction_task else "classification"
+        summary = compare_label_fields(
+            _decode_heatmap(contour_a),
+            _decode_heatmap(contour_b),
+            grid_resolution=res,
+            x_feature=feature_names[resolved_x],
+            y_feature=feature_names[resolved_y],
+            prediction_task=task,
+        )
+        mask_resp = summary_to_response(summary)
+
+        conflict_frames: list[int] = []
+        try:
+            if selected and task == "classification":
+                from app.domains.simulation.contour_2d_generator import PREDICT_CHUNK_SIZE
+
+                def _batched(adapter: Any, holder: Any) -> list[float]:
+                    out: list[float] = []
+                    mat = np.ascontiguousarray(X[selected], dtype=np.float32)
+                    off = 0
+                    while off < mat.shape[0]:
+                        chunk = np.ascontiguousarray(mat[off:off + PREDICT_CHUNK_SIZE], dtype=np.float32)
+                        r = adapter.predict_batch(holder, chunk)
+                        out.extend(float(v) for v in list(r.predictions))
+                        del chunk, r
+                        off += PREDICT_CHUNK_SIZE
+                    return out
+
+                preds_a = await asyncio.to_thread(_batched, adapter_a, model_a)
+                preds_b = await asyncio.to_thread(_batched, adapter_b, model_b)
+                idx = frame_disagreement_indices(preds_a, preds_b, is_classification=True)
+                conflict_frames = [int(selected[i]) for i in idx if 0 <= int(i) < len(selected)][:10_000]
+                del preds_a, preds_b
+        except Exception:
+            conflict_frames = []
+        del X
+
+        return DualContour2DResponse(
+            x_feature=feature_names[resolved_x],
+            y_feature=feature_names[resolved_y],
+            grid_resolution=res,
+            prediction_task=task,
+            disagreement_pct=mask_resp["disagreement_pct"],
+            agreement_pct=mask_resp["agreement_pct"],
+            n_cells=mask_resp["n_cells"],
+            n_conflict_cells=mask_resp["n_conflict_cells"],
+            consensus_notice=mask_resp["consensus_notice"],
+            conflict_mask=mask_resp["conflict_mask"],
+            conflict_mask_downsampled=mask_resp["conflict_mask_downsampled"],
+            conflict_frame_indices=conflict_frames,
+            model_a_name=type(final_a).__name__ if final_a is not None else type(model_a).__name__,
+            model_b_name=type(final_b).__name__ if final_b is not None else type(model_b).__name__,
+            contour_a=contour_a.model_dump(mode="json"),
+            contour_b=contour_b.model_dump(mode="json"),
             computation_time_ms=round((time.perf_counter() - started) * 1000.0, 2),
         )
 

@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends
 from app.application.projection_orchestrator import (
     ProjectionBoostFrameRequest,
     ProjectionContourRequest,
+    ProjectionDualCompare2DRequest,
     ProjectionKnnFrameRequest,
     ProjectionOrchestrator,
     ProjectionSurfaceRequest,
@@ -54,4 +55,13 @@ async def compute_boost_frame_2d(
     orchestrator: ProjectionOrchestrator = Depends(get_projection_orchestrator),
 ) -> dict[str, Any]:
     entity = await orchestrator.build_boost_frame(body)
+    return entity.model_dump(mode="json")
+
+
+@router.post("/dual-compare-2d", summary="Phase 48: synchronized dual-model 2D conflict mask + both contours")
+async def compute_dual_compare_2d(
+    body: ProjectionDualCompare2DRequest,
+    orchestrator: ProjectionOrchestrator = Depends(get_projection_orchestrator),
+) -> dict[str, Any]:
+    entity = await orchestrator.build_dual_contour(body)
     return entity.model_dump(mode="json")
