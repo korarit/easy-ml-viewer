@@ -10,16 +10,27 @@ import {
 } from '../types/explainability.types';
 
 /** One plain-language sentence: which features pushed the prediction up/down. */
-function VerdictSentence({ explanation }: { explanation: FrameExplanation }) {
+function VerdictSentence({ explanation, isFlat }: { explanation: FrameExplanation; isFlat: boolean }) {
   const ranked = useMemo(
     () => [...explanation.attributions].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution)),
     [explanation],
   );
-  const pushUp = ranked.find((a) => a.contribution > 0) ?? null;
-  const pullDown = ranked.find((a) => a.contribution < 0) ?? null;
 
   const out = explanation.output_value;
   const outText = Number.isInteger(out) ? String(out) : out.toFixed(3);
+
+  if (isFlat) {
+    return (
+      <p className="text-xs leading-5" style={{ color: 'var(--text-primary)' }} aria-live="polite">
+        Prediction is rock-solid at <strong className="font-mono-tabular">{outText}</strong> — moving any
+        single feature to its typical value does not move it. The model is fully confident on this frame,
+        so there are no push/pull bars; where this row stands is below.
+      </p>
+    );
+  }
+
+  const pushUp = ranked.find((a) => a.contribution > 0) ?? null;
+  const pullDown = ranked.find((a) => a.contribution < 0) ?? null;
 
   return (
     <p className="text-xs leading-5" style={{ color: 'var(--text-primary)' }} aria-live="polite">
@@ -68,6 +79,21 @@ export function WhyPanel() {
   const maxAbs = useMemo(() => {
     if (!explanation || explanation.attributions.length === 0) return 1;
     return Math.max(1e-9, ...explanation.attributions.map((a) => Math.abs(a.contribution)));
+  }, [explanation]);
+
+  // Locally flat model (e.g. unanimous kNN neighborhoods, saturated
+  // probability): every contribution is ~zero, so contribution bars would
+  // be invisible. Rank by deviation from typical instead and say so.
+  const isFlat =
+    !!explanation &&
+    explanation.attributions.length > 0 &&
+    explanation.attributions.every((a) => Math.abs(a.contribution) < 1e-9);
+
+  const positionalRanked = useMemo(() => {
+    if (!explanation) return [];
+    return [...explanation.attributions].sort(
+      (a, b) => Math.abs(b.z_score) - Math.abs(a.z_score),
+    );
   }, [explanation]);
 
   const hiddenCount = Math.max(0, featureCount - (explanation?.attributions.length ?? 0));
@@ -136,9 +162,60 @@ export function WhyPanel() {
             <div className="font-mono-tabular mb-1 text-[11px]" style={{ color: 'var(--text-secondary)' }}>
               Baseline {explanation.base_value.toFixed(3)} → Output {explanation.output_value.toFixed(3)}
             </div>
-            <VerdictSentence explanation={explanation} />
+            <VerdictSentence explanation={explanation} isFlat={isFlat} />
           </div>
 
+          {isFlat ? (
+            <>
+              <p className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
+                Where this row stands vs typical rows
+              </p>
+              <ol className="flex flex-col gap-1.5">
+                {positionalRanked.map((attr) => (
+                  <li key={attr.feature_index}>
+                    <div className="flex items-baseline justify-between gap-2 text-xs">
+                      <span className="min-w-0 flex-1 truncate" style={{ color: 'var(--text-primary)' }} title={attr.feature_name}>
+                        {attr.feature_name}
+                        {isOutlierPercentile(attr.percentile) && (
+                          <span className="ml-1 text-[10px]" style={{ color: '#f59e0b' }}>
+                            ⚠ outlier
+                          </span>
+                        )}
+                      </span>
+                      <span className="font-mono-tabular shrink-0" style={{ color: 'var(--text-secondary)' }}>
+                        {formatRawValue(attr.raw_value)} · P{Math.round(attr.percentile)}
+                      </span>
+                    </div>
+                    <div
+                      className="mt-0.5"
+                      style={{ position: 'relative', height: 8, background: 'rgba(148,163,184,0.15)', borderRadius: 4, overflow: 'hidden' }}
+                    >
+                      <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 1, background: 'rgba(226,232,240,0.6)' }} />
+                      <div
+                        style={{
+                          position: 'absolute',
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: `${Math.max(0, Math.min(100, attr.percentile)).toFixed(1)}%`,
+                          background: isOutlierPercentile(attr.percentile) ? '#f59e0b' : '#38bdf8',
+                          borderRadius: 4,
+                        }}
+                      />
+                    </div>
+                    <div className="font-mono-tabular mt-0.5 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                      {Number.isFinite(attr.z_score) ? `z=${attr.z_score.toFixed(2)} vs typical` : 'typical value unavailable'}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                Blue = where this row sits in the data (median tick in the middle). Scrub to a frame where
+                the model hesitates and the push/pull bars will appear.
+              </p>
+            </>
+          ) : (
+          <>
           <ol className="flex flex-col gap-1.5">
             {explanation.attributions.map((attr) => {
               const frac = Math.abs(attr.contribution) / maxAbs;
@@ -190,6 +267,8 @@ export function WhyPanel() {
             Green pushed the prediction up, red pulled it down. Bars scale to the strongest feature —
             scrub to another frame to compare.
           </p>
+          </>
+          )}
         </>
       )}
     </div>

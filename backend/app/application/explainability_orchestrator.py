@@ -154,8 +154,11 @@ class ExplainabilityOrchestrator:
             )
         items = sorted(mapping.items, key=lambda x: x.feature_index)
         feature_cols = [i.dataset_column_name for i in items if i.dataset_column_name]
+        # Display names: prefer the human dataset column (e.g. sepal_length)
+        # over the positional model name (e.g. feature_3) — models trained
+        # from bare ndarrays carry no names.
         feature_names = [
-            i.model_feature_name or i.dataset_column_name or f"feature_{i.feature_index}"
+            i.dataset_column_name or i.model_feature_name or f"feature_{i.feature_index}"
             for i in items
         ]
         if not feature_cols:
