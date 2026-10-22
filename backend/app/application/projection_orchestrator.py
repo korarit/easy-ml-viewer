@@ -64,6 +64,21 @@ class ProjectionSurfaceRequest(BaseModel):
     selected_row_indices: list[int] = Field(default_factory=list)
 
 
+class ProjectionContourRequest(BaseModel):
+    """Phase 41 — dense 2D contour request (120x120 decision-boundary grid)."""
+
+    dataset_id: str = Field(min_length=1)
+    model_id: str = Field(min_length=1)
+    mapping_id: str = Field(min_length=1)
+    x_feature: str = Field(min_length=1)
+    y_feature: str = Field(min_length=1)
+    pinning_mode: PinningMode = PinningMode.MEDIAN
+    current_frame_index: int | None = None
+    use_robust_range: bool = False
+    grid_resolution: int = Field(default=120, ge=16, le=200)
+    selected_row_indices: list[int] = Field(default_factory=list)
+
+
 def _resolve_feature_index(items: list[Any], name: str) -> int | None:
     for item in items:
         if item.dataset_column_name == name or item.model_feature_name == name:
@@ -269,6 +284,163 @@ class ProjectionOrchestrator:
         entity.computation_time_ms = round((time.perf_counter() - started) * 1000.0, 2)
         self._cache.put(cache_key, entity)
         return entity
+
+    async def build_contour(self, req: ProjectionContourRequest) -> Any:
+        """Phase 41 — dense 2D decision-boundary grid (delegates to the shared resolver)."""
+        return await _resolve_contour_frame(req, self)
+
+
+class _ContourCache:
+    """Process-wide LRU for Phase-41 contour payloads (≤8 entries)."""
+
+    _store: dict[tuple[Any, ...], Any] = {}
+    _order: list[tuple[Any, ...]] = []
+
+    @classmethod
+    def get(cls, key: tuple[Any, ...]) -> Any | None:
+        entity = cls._store.get(key)
+        if entity is not None:
+            cls._order.remove(key)
+            cls._order.append(key)
+        return entity
+
+    @classmethod
+    def put(cls, key: tuple[Any, ...], entity: Any) -> None:
+        if key in cls._store:
+            cls._order.remove(key)
+        cls._store[key] = entity
+        cls._order.append(key)
+        while len(cls._order) > 8:
+            oldest = cls._order.pop(0)
+            cls._store.pop(oldest, None)
+
+    @classmethod
+    def clear(cls) -> None:
+        cls._store.clear()
+        cls._order.clear()
+
+
+async def _resolve_contour_frame(
+    req: ProjectionContourRequest,
+    orchestrator: ProjectionOrchestrator,
+) -> Any:
+    """Shared validation + dataset/model loading for the contour path."""
+    from app.domains.simulation.contour_2d_generator import Contour2DGenerator
+
+    mapping = orchestrator._mappings.get(req.mapping_id)
+    if mapping.dataset_id != req.dataset_id or mapping.model_id != req.model_id:
+        raise DomainException(
+            code="MAPPING_MISMATCH",
+            message="Mapping does not belong to the given dataset/model pair",
+            details={"mapping_id": req.mapping_id},
+            http_status=422,
+        )
+    items = sorted(mapping.items, key=lambda x: x.feature_index)
+    n_features = len(items)
+    if n_features == 0:
+        raise DomainException(
+            code="PROJECTION_NO_FEATURES",
+            message="Mapping has no feature columns — map at least one feature first",
+            http_status=422,
+        )
+    resolved_x = _resolve_feature_index(items, req.x_feature)
+    resolved_y = _resolve_feature_index(items, req.y_feature)
+    if resolved_x is None or resolved_y is None:
+        available = [i.dataset_column_name or i.model_feature_name for i in items]
+        raise DomainException(
+            code="PROJECTION_UNKNOWN_FEATURE",
+            message=f"Unknown feature(s): x='{req.x_feature}', y='{req.y_feature}'",
+            details={"x_feature": req.x_feature, "y_feature": req.y_feature, "available_features": available},
+            http_status=422,
+        )
+    if resolved_x == resolved_y and n_features >= 2:
+        raise DomainException(
+            code="PROJECTION_DUPLICATE_AXES",
+            message="X and Y axes must be different features (use swapAxes on the client)",
+            http_status=422,
+        )
+
+    selected = [int(i) for i in (req.selected_row_indices or []) if int(i) >= 0]
+    if len(selected) > MAX_QUEUE_POINTS:
+        raise DomainException(
+            code="PROJECTION_TOO_MANY_POINTS",
+            message=f"Select at most {MAX_QUEUE_POINTS} rows per scene",
+            http_status=422,
+        )
+
+    res = max(16, min(200, int(req.grid_resolution)))
+    grid_bytes = float(res * res * n_features * 4)
+    available_mb = float(psutil.virtual_memory().available) / (1024 * 1024)
+    if grid_bytes / (1024 * 1024) > max(0.0, available_mb - MIN_FREE_RAM_MB):
+        raise DomainException(
+            code="PROJECTION_WIDE_GRID_TOO_LARGE",
+            message=f"Contour grid {res}x{res}x{n_features} exceeds free RAM",
+            http_status=413,
+        )
+
+    feature_cols = [i.dataset_column_name for i in items if i.dataset_column_name]
+    parquet_path = orchestrator._datasets._require(req.dataset_id)
+    import pyarrow.parquet as pq
+
+    pf = pq.ParquetFile(parquet_path, memory_map=True)
+    total_rows = int(pf.metadata.num_rows)
+    all_columns = set(pf.schema.names)
+    for col in feature_cols:
+        if col not in all_columns:
+            raise DomainException(
+                code="PROJECTION_COLUMN_MISSING",
+                message=f"Column '{col}' not found in cached dataset",
+                http_status=422,
+            )
+
+    cache_key = (
+        req.dataset_id, req.model_id, req.mapping_id,
+        req.x_feature, req.y_feature, req.pinning_mode.value,
+        int(req.current_frame_index) if req.current_frame_index is not None else -1,
+        bool(req.use_robust_range), res,
+    )
+    started = time.perf_counter()
+    cached = _ContourCache.get(cache_key)
+    if cached is not None:
+        return cached.model_copy(update={"computation_time_ms": round((time.perf_counter() - started) * 1000.0, 2)})
+
+    model_obj = orchestrator._models.get_model(req.model_id)
+    _, final_est, _ = UniversalSchemaDetector.unwrap_model_container(model_obj)
+    adapter = ModelRegistry.resolve_adapter(final_est, ".joblib")
+
+    df = orchestrator._datasets.load_dataframe(req.dataset_id, columns=feature_cols)
+    try:
+        df = df.reindex(columns=feature_cols)
+        X = TypeCastingEngine.build_float32_matrix(df, items)
+    finally:
+        del df
+
+    current_row_values: np.ndarray | None = None
+    if req.pinning_mode == PinningMode.CURRENT_ROW and selected:
+        frame = req.current_frame_index if req.current_frame_index is not None else 0
+        frame = max(0, min(int(frame), len(selected) - 1))
+        if 0 <= selected[frame] < X.shape[0]:
+            current_row_values = X[selected[frame]].astype(np.float32, copy=True)
+
+    feature_names = [i.dataset_column_name or i.model_feature_name for i in items]
+    entity = await asyncio.to_thread(
+        Contour2DGenerator.generate_contour,
+        adapter=adapter,
+        model_obj=model_obj,
+        final_est=final_est,
+        X=X,
+        x_feature_idx=resolved_x,
+        y_feature_idx=resolved_y,
+        x_feature_name=feature_names[resolved_x],
+        y_feature_name=feature_names[resolved_y],
+        grid_resolution=res,
+        pinning_mode=req.pinning_mode.value,
+        current_row_values=current_row_values,
+        use_robust_range=bool(req.use_robust_range),
+    )
+    del X
+    _ContourCache.put(cache_key, entity)
+    return entity
 
 
 def _vo_from(req: ProjectionSurfaceRequest):  # -> ProjectionConfigVO (lazy import breaks cycle)

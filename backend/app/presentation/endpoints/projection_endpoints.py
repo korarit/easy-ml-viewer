@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, Depends
 
 from app.application.projection_orchestrator import (
+    ProjectionContourRequest,
     ProjectionOrchestrator,
     ProjectionSurfaceRequest,
 )
@@ -24,4 +25,13 @@ async def compute_surface_mesh(
     orchestrator: ProjectionOrchestrator = Depends(get_projection_orchestrator),
 ) -> dict[str, Any]:
     entity = await orchestrator.build_surface(body)
+    return entity.model_dump(mode="json")
+
+
+@router.post("/contour-2d", summary="Phase 41: dense 2D decision-boundary + isoline contours")
+async def compute_contour_2d(
+    body: ProjectionContourRequest,
+    orchestrator: ProjectionOrchestrator = Depends(get_projection_orchestrator),
+) -> dict[str, Any]:
+    entity = await orchestrator.build_contour(body)
     return entity.model_dump(mode="json")
