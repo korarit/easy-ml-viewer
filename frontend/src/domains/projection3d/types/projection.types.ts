@@ -23,6 +23,46 @@ export interface ContourLevel2D {
   lineSegments: Array<[number, number, number, number]>;
 }
 
+/** Phase 42 — one exact analytic line (mirrors Linear2DLine). */
+export interface Linear2DLinePayload {
+  kind: 'decision' | 'margin_pos' | 'margin_neg' | 'confidence' | 'pairwise' | 'slope';
+  level: number;
+  /** World-coord segment [x1, y1, x2, y2]; null when the line misses the rect. */
+  segmentWorld: [number, number, number, number] | null;
+  segmentRaw: [number, number, number, number] | null;
+  label: string;
+  classA: number | null;
+  classB: number | null;
+}
+
+/** Phase 42 — exact linear geometry (mirrors Linear2DGeometry, null when N/A). */
+export interface Linear2DPayload {
+  family: string;
+  task: 'classification' | 'regression';
+  xFeature: string;
+  yFeature: string;
+  w1: number;
+  w2: number;
+  bEff: number;
+  decisionThreshold: number;
+  normalVector: [number, number];
+  corridorWidth: number | null;
+  marginLevel: number | null;
+  isXZeroed: boolean;
+  isYZeroed: boolean;
+  bothZeroed: boolean;
+  sparsityRatio: number;
+  l1Ratio: number | null;
+  alpha: number | null;
+  penalty: string | null;
+  slopeW1: number | null;
+  xSweepIntercept: number | null;
+  formula: string;
+  isMulticlass: boolean;
+  nClasses: number;
+  lines: Linear2DLinePayload[];
+}
+
 /** Phase 41 — dense 2D contour payload (mirrors Contour2DResponse). */
 export interface Contour2DPayload {
   gridResolution: number;
@@ -38,6 +78,8 @@ export interface Contour2DPayload {
   heatmapQuantized: Uint8Array;
   contours: ContourLevel2D[];
   responseCurve1D: { xValuesRaw: number[]; yPred: number[] } | null;
+  /** Phase 42 — exact linear overlay; null for non-linear / pipelined models. */
+  linear2d: Linear2DPayload | null;
   computationTimeMs: number;
 }
 

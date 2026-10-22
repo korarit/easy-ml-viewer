@@ -80,6 +80,10 @@ export function LayerVisibilityControls2D() {
   const showConfidenceIsolines = useStage3DStore((s) => s.showConfidenceIsolines);
   const showHeatmap = useStage3DStore((s) => s.showHeatmap);
   const showRulers = useStage3DStore((s) => s.showRulers);
+  const showLinearExact = useStage3DStore((s) => s.showLinearExact);
+  const showNormalVector = useStage3DStore((s) => s.showNormalVector);
+  const showMarginCorridor = useStage3DStore((s) => s.showMarginCorridor);
+  const showSparsityBadges = useStage3DStore((s) => s.showSparsityBadges);
   const st = useStage3DStore.getState();
 
   const row = (label: string, checked: boolean, onChange: (v: boolean) => void, hint: string) => (
@@ -107,6 +111,10 @@ export function LayerVisibilityControls2D() {
         {row('Confidence isolines', showConfidenceIsolines, (v) => st.setShowConfidenceIsolines(v), '60 / 70 / 80 / 90% isolines')}
         {row('Density heatmap', showHeatmap, (v) => st.setShowHeatmap(v), 'Probability / prediction background')}
         {row('Precision rulers', showRulers, (v) => st.setShowRulers(v), 'Raw-value axis rulers')}
+        {row('Exact linear line', showLinearExact, (v) => st.setShowLinearExact(v), 'Analytic linear boundary + confidence parallels (Phase 42)')}
+        {row('Normal vector', showNormalVector, (v) => st.setShowNormalVector(v), 'Weight ascent arrow on the exact line')}
+        {row('Margin corridor', showMarginCorridor, (v) => st.setShowMarginCorridor(v), 'SGD/Ridge z = ±1 band (W = 2/‖w‖)')}
+        {row('Sparsity badges', showSparsityBadges, (v) => st.setShowSparsityBadges(v), 'L1 zeroed-axis warnings')}
       </div>
     </div>
   );

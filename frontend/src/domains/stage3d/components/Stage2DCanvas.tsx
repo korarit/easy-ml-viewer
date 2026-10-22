@@ -4,6 +4,7 @@ import { useProjectionStore } from '../../projection3d/store/useProjectionStore'
 import { usePlaybackStore } from '../../playback/store/usePlaybackStore';
 import { sampleColormap } from '../../projection3d/components/colormaps';
 import { DecisionBoundaryContour2D, wy } from './DecisionBoundaryContour2D';
+import { LinearOverlays2D } from './surfaces_2d/LinearOverlays2D';
 import { ActiveDataPointReticle2D } from './ActiveDataPointReticle2D';
 import { WhatIfDisplacementVector2D } from './WhatIfDisplacementVector2D';
 
@@ -141,6 +142,11 @@ export function Stage2DCanvas() {
   const isClassification = contourData?.predictionTask === 'classification';
   const hMin = contourData?.heatmapMin ?? 0;
   const hMax = contourData?.heatmapMax ?? 1;
+  // Phase 42 — sampled elevation thresholds double as levels for the exact
+  // analytic regression guides (parallel lines, razor-sharp).
+  const elevationThresholds = contourData
+    ? contourData.contours.filter((c) => c.kind === 'elevation').map((c) => c.threshold)
+    : [];
 
   const rulerTicks = [-5, -2.5, 0, 2.5, 5];
   const rawLabel = (w: number, min: number, max: number): string => {
@@ -206,6 +212,13 @@ export function Stage2DCanvas() {
               {/* Frame border of the [-5, +5] world cube */}
               <rect x={-5} y={-5} width={10} height={10} fill="none" stroke="#334155" strokeWidth={0.03} />
               <DecisionBoundaryContour2D contours={contourData.contours} />
+              {/* Phase 42 — exact analytic linear overlays (no-op when linear2d is null). */}
+              <LinearOverlays2D
+                linear2d={contourData.linear2d}
+                elevationThresholds={elevationThresholds}
+                xRangeRaw={contourData.xRangeRaw}
+                yRangeRaw={contourData.yRangeRaw}
+              />
               {/* Trajectory points */}
               <g aria-label="Trajectory points">
                 {points.map((p, f) => {
@@ -282,6 +295,20 @@ export function Stage2DCanvas() {
             2D Orthographic · {contourData.gridResolution}×{contourData.gridResolution} · X {contourData.xFeature} · Y{' '}
             {contourData.yFeature} · {contourData.computationTimeMs.toFixed(1)} ms
           </div>
+          {/* Phase 42 — exact linear formula badge (top-right, non-interactive). */}
+          {contourData.linear2d && (
+            <div
+              className="font-mono-tabular pointer-events-none absolute top-1 right-1 max-w-[70%] truncate rounded px-2 py-1 text-[11px]"
+              style={{ background: 'rgba(10,15,22,0.72)', color: 'var(--text-primary)' }}
+              title={contourData.linear2d.formula}
+            >
+              {contourData.linear2d.formula}
+              {contourData.linear2d.corridorWidth !== null &&
+                contourData.linear2d.task === 'classification' &&
+                ` · W=${contourData.linear2d.corridorWidth.toPrecision(4)}`}
+              {contourData.linear2d.l1Ratio !== null && ` · ρ=${contourData.linear2d.l1Ratio.toFixed(2)}`}
+            </div>
+          )}
         </div>
       )}
     </div>

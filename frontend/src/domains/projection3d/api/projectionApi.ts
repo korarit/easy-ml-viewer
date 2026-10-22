@@ -63,6 +63,40 @@ interface Contour2DResponse {
     line_segments: Array<[number, number, number, number]>;
   }>;
   response_curve_1d: { x_values_raw: number[]; y_pred: number[] } | null;
+  linear_2d: {
+    family: string;
+    task: 'classification' | 'regression';
+    x_feature: string;
+    y_feature: string;
+    w1: number;
+    w2: number;
+    b_eff: number;
+    decision_threshold: number;
+    normal_vector: [number, number];
+    corridor_width: number | null;
+    margin_level: number | null;
+    is_x_zeroed: boolean;
+    is_y_zeroed: boolean;
+    both_zeroed: boolean;
+    sparsity_ratio: number;
+    l1_ratio: number | null;
+    alpha: number | null;
+    penalty: string | null;
+    slope_w1: number | null;
+    x_sweep_intercept: number | null;
+    formula: string;
+    is_multiclass: boolean;
+    n_classes: number;
+    lines: Array<{
+      kind: 'decision' | 'margin_pos' | 'margin_neg' | 'confidence' | 'pairwise' | 'slope';
+      level: number;
+      segment_world: [number, number, number, number] | null;
+      segment_raw: [number, number, number, number] | null;
+      label: string;
+      class_a: number | null;
+      class_b: number | null;
+    }>;
+  } | null;
   computation_time_ms: number;
 }
 
@@ -119,6 +153,42 @@ export async function fetchContour2D(
     })),
     responseCurve1D: data.response_curve_1d
       ? { xValuesRaw: data.response_curve_1d.x_values_raw, yPred: data.response_curve_1d.y_pred }
+      : null,
+    linear2d: data.linear_2d
+      ? {
+          family: data.linear_2d.family,
+          task: data.linear_2d.task,
+          xFeature: data.linear_2d.x_feature,
+          yFeature: data.linear_2d.y_feature,
+          w1: data.linear_2d.w1,
+          w2: data.linear_2d.w2,
+          bEff: data.linear_2d.b_eff,
+          decisionThreshold: data.linear_2d.decision_threshold,
+          normalVector: data.linear_2d.normal_vector,
+          corridorWidth: data.linear_2d.corridor_width,
+          marginLevel: data.linear_2d.margin_level,
+          isXZeroed: data.linear_2d.is_x_zeroed,
+          isYZeroed: data.linear_2d.is_y_zeroed,
+          bothZeroed: data.linear_2d.both_zeroed,
+          sparsityRatio: data.linear_2d.sparsity_ratio,
+          l1Ratio: data.linear_2d.l1_ratio,
+          alpha: data.linear_2d.alpha,
+          penalty: data.linear_2d.penalty,
+          slopeW1: data.linear_2d.slope_w1,
+          xSweepIntercept: data.linear_2d.x_sweep_intercept,
+          formula: data.linear_2d.formula,
+          isMulticlass: data.linear_2d.is_multiclass,
+          nClasses: data.linear_2d.n_classes,
+          lines: data.linear_2d.lines.map((l) => ({
+            kind: l.kind,
+            level: l.level,
+            segmentWorld: l.segment_world,
+            segmentRaw: l.segment_raw,
+            label: l.label,
+            classA: l.class_a,
+            classB: l.class_b,
+          })),
+        }
       : null,
     computationTimeMs: data.computation_time_ms,
   };

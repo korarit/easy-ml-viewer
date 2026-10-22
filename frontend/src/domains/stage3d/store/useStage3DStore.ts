@@ -44,6 +44,11 @@ interface Stage3DState {
   showConfidenceIsolines: boolean;
   showHeatmap: boolean;
   showRulers: boolean;
+  /** Phase 42 — exact linear overlay visibility. */
+  showLinearExact: boolean;
+  showNormalVector: boolean;
+  showMarginCorridor: boolean;
+  showSparsityBadges: boolean;
   isLoading: boolean;
   stageError: string | null;
   contextLost: boolean;
@@ -57,6 +62,10 @@ interface Stage3DState {
   setShowConfidenceIsolines: (v: boolean) => void;
   setShowHeatmap: (v: boolean) => void;
   setShowRulers: (v: boolean) => void;
+  setShowLinearExact: (v: boolean) => void;
+  setShowNormalVector: (v: boolean) => void;
+  setShowMarginCorridor: (v: boolean) => void;
+  setShowSparsityBadges: (v: boolean) => void;
   setActiveFrameIndex: (frameIdx: number) => void;
   setAxes: (xIdx: number, yIdx: number) => Promise<void>;
   setSurfaceResolution: (res: number) => Promise<void>;
@@ -119,6 +128,10 @@ export const useStage3DStore = create<Stage3DState>((set, get) => ({
   showConfidenceIsolines: true,
   showHeatmap: true,
   showRulers: true,
+  showLinearExact: true,
+  showNormalVector: true,
+  showMarginCorridor: true,
+  showSparsityBadges: true,
   isLoading: false,
   stageError: null,
   contextLost: false,
@@ -139,6 +152,14 @@ export const useStage3DStore = create<Stage3DState>((set, get) => ({
   setShowHeatmap: (v) => set({ showHeatmap: v }),
 
   setShowRulers: (v) => set({ showRulers: v }),
+
+  setShowLinearExact: (v) => set({ showLinearExact: v }),
+
+  setShowNormalVector: (v) => set({ showNormalVector: v }),
+
+  setShowMarginCorridor: (v) => set({ showMarginCorridor: v }),
+
+  setShowSparsityBadges: (v) => set({ showSparsityBadges: v }),
 
   setActiveFrameIndex: (frameIdx) => {
     const { points } = get();
