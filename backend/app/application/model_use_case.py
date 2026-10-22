@@ -32,14 +32,15 @@ from app.domains.model_engine.adapters.probabilistic import discriminant as _dis
 from app.domains.model_engine.adapters.boosting import hist_gbm as _hist_gbm_adapter  # noqa: F401
 from app.domains.model_engine.adapters.boosting import sklearn_gbm as _gbm_adapter  # noqa: F401
 from app.domains.model_engine.adapters.boosting import xgb_adapter as _xgb_adapter  # noqa: F401
+from app.domains.model_engine.adapters.boosting import lightgbm_adapter as _lgbm_adapter  # noqa: F401
 from app.domains.model_engine.adapters.trees import decision_tree as _decision_tree_adapter  # noqa: F401
 from app.domains.model_engine.adapters.trees import adaboost as _adaboost_adapter  # noqa: F401
 from app.domains.model_engine.adapters.trees import extra_trees as _extra_trees_adapter  # noqa: F401
 from app.domains.model_engine.adapters.trees import random_forest as _random_forest_adapter  # noqa: F401
 
-# Phase 33: native XGBoost booster formats load straight into xgb.Booster.
-_ALLOWED_MODEL_SUFFIXES = {".joblib", ".pkl", ".pickle", ".json", ".ubj", ".model", ".xgb"}
-_ALLOWED_SAMPLE_SUFFIXES = {".joblib", ".pkl", ".pickle", ".json", ".ubj", ".model", ".xgb"}
+# Phase 33-34: native booster formats load straight into xgb.Booster / lgb.Booster.
+_ALLOWED_MODEL_SUFFIXES = {".joblib", ".pkl", ".pickle", ".json", ".ubj", ".model", ".xgb", ".txt", ".lgb"}
+_ALLOWED_SAMPLE_SUFFIXES = {".joblib", ".pkl", ".pickle", ".json", ".ubj", ".model", ".xgb", ".txt", ".lgb"}
 
 
 def _sanitize_hyperparameters(raw: dict[str, Any]) -> dict[str, Any]:

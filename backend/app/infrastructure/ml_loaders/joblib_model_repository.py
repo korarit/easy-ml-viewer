@@ -51,8 +51,9 @@ class JoblibModelRepository:
         self._max_models = max(1, max_models_in_ram)
         self._models: OrderedDict[str, Any] = OrderedDict()
 
-    # Phase 33: native XGBoost booster formats bypass joblib entirely.
-    _XGB_NATIVE_SUFFIXES = frozenset({".json", ".ubj", ".model", ".xgb"})
+    # Phase 33-34: native booster formats bypass joblib entirely
+    # (XGBoost: .json/.ubj/.model/.xgb — LightGBM: .txt/.model/.lgb).
+    _XGB_NATIVE_SUFFIXES = frozenset({".json", ".ubj", ".model", ".xgb", ".txt", ".lgb"})
 
     def load_and_cache(self, model_id: str, file_path: str | Path) -> tuple[Any, list[str]]:
         suffix = Path(file_path).suffix.lower()
@@ -72,27 +73,48 @@ class JoblibModelRepository:
         return obj, load_warnings
 
     def _load_native_booster(self, model_id: str, file_path: Path) -> tuple[Any, list[str]]:
-        """Load a native ``xgb.Booster`` artifact (``.json`` / ``.ubj`` / ``.model``)."""
-        try:
-            import xgboost as xgb  # noqa: PLC0415
-        except ImportError as exc:
-            raise DomainException(
-                code="XGBOOST_NOT_INSTALLED",
-                message="xgboost is required to load native booster files (.json/.ubj/.model)",
-                http_status=415,
-            ) from exc
-        try:
-            with warnings.catch_warnings(record=True) as caught:
-                warnings.simplefilter("always")
-                booster = xgb.Booster()
-                booster.load_model(file_path)
-        except Exception as exc:
+        """Load a native booster artifact (XGBoost ``.json``/``.ubj`` or LightGBM ``.txt``/``.model``)."""
+        # Phase 34: LightGBM text artifacts (.txt/.model/.lgb) try lgb.Booster
+        # first; XGBoost binaries (.json/.ubj/.xgb) try xgb.Booster first.
+        # Ambiguous ".model" tries LightGBM then falls back to XGBoost.
+        suffix = file_path.suffix.lower()
+        order = (
+            ("lgb", "xgb") if suffix in {".txt", ".lgb", ".model"} else ("xgb", "lgb")
+        )
+        last_error: Exception | None = None
+        booster: Any = None
+        load_warnings: list[str] = []
+        for backend in order:
+            try:
+                if backend == "lgb":
+                    import lightgbm as lgbm  # noqa: PLC0415
+
+                    with warnings.catch_warnings(record=True) as caught:
+                        warnings.simplefilter("always")
+                        booster = lgbm.Booster(model_file=str(file_path))
+                        _ = booster.num_trees()  # force parse so bad files raise here
+                    load_warnings = [f"{w.category.__name__}: {w.message}" for w in caught]
+                    break
+                import xgboost as xgb  # noqa: PLC0415
+
+                with warnings.catch_warnings(record=True) as caught:
+                    warnings.simplefilter("always")
+                    booster = xgb.Booster()
+                    booster.load_model(file_path)
+                load_warnings = [f"{w.category.__name__}: {w.message}" for w in caught]
+                break
+            except ImportError as exc:
+                last_error = exc
+                continue
+            except Exception as exc:  # noqa: BLE001 - fall through to the other backend
+                last_error = exc
+                continue
+        if booster is None:
             raise DomainException(
                 code="NATIVE_BOOSTER_LOAD_FAILED",
-                message=f"File '{file_path.name}' is not a loadable XGBoost booster: {exc}",
+                message=f"File '{file_path.name}' is not a loadable booster: {last_error}",
                 http_status=415,
-            ) from exc
-        load_warnings = [f"{w.category.__name__}: {w.message}" for w in caught]
+            ) from last_error
         self._models[model_id] = booster
         self._models.move_to_end(model_id)
         while len(self._models) > self._max_models:

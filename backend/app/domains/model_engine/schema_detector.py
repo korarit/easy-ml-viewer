@@ -20,8 +20,13 @@ class ModelSchema(BaseModel):
 
 def _is_native_booster(obj: Any) -> bool:
     """Duck-typed check for a native ``xgb.Booster`` (no hard xgboost import)."""
-    return callable(getattr(obj, "num_boosted_rounds", None)) and callable(
+    if callable(getattr(obj, "num_boosted_rounds", None)) and callable(
         getattr(obj, "save_config", None)
+    ):
+        return True
+    # Phase 34: native ``lgb.Booster`` exposes num_trees / dump_model instead.
+    return callable(getattr(obj, "num_trees", None)) and callable(
+        getattr(obj, "dump_model", None)
     )
 
 
@@ -99,7 +104,10 @@ class UniversalSchemaDetector:
         """Raise MODEL_NOT_FITTED when the estimator never saw .fit()."""
         if _is_native_booster(estimator):
             try:
-                n_rounds = int(estimator.num_boosted_rounds())
+                if callable(getattr(estimator, "num_boosted_rounds", None)):
+                    n_rounds = int(estimator.num_boosted_rounds())
+                else:  # Phase 34: lgb.Booster counts trees instead of rounds.
+                    n_rounds = int(estimator.num_trees())
             except Exception:
                 n_rounds = 0
             if n_rounds < 1:
@@ -172,6 +180,75 @@ class UniversalSchemaDetector:
         return ModelSchema(n_features_in=n, features=features, classes=classes)
 
     @staticmethod
+    def _extract_lgb_booster_schema(booster: Any) -> ModelSchema | None:
+        """Schema for a native ``lgb.Booster`` (``None`` when not LightGBM)."""
+        if not (
+            callable(getattr(booster, "num_trees", None))
+            and callable(getattr(booster, "dump_model", None))
+        ):
+            return None
+        try:
+            n = int(booster.num_trees())
+        except Exception:
+            n = 0
+        # Distinguish from xgb.Booster (which also lacks sklearn attrs but has
+        # num_boosted_rounds): LightGBM dump carries num_tree_per_iteration.
+        try:
+            dump = booster.dump_model(num_iteration=1)
+        except Exception:
+            return None
+        if not isinstance(dump, dict) or "num_tree_per_iteration" not in dump:
+            return None
+        n_feat = 0
+        try:
+            n_feat = int(dump.get("max_feature_idx", -1)) + 1
+        except (TypeError, ValueError):
+            n_feat = 0
+        if n_feat < 1:
+            try:
+                n_feat = len(list(booster.feature_name() or []))
+            except (AttributeError, TypeError, ValueError):
+                n_feat = 0
+        if n_feat < 1:
+            raise ModelLoadError(
+                f"Cannot determine input dimensionality of '{type(booster).__name__}'",
+                details={"estimator_class": type(booster).__name__},
+                code="SCHEMA_EXTRACTION_FAILED",
+            )
+        try:
+            embedded = list(booster.feature_name() or [])
+        except (AttributeError, TypeError, ValueError):
+            embedded = []
+        auto = not (embedded and len(embedded) == n_feat)
+        names = (
+            [str(v) for v in embedded]
+            if (embedded and len(embedded) == n_feat)
+            else [f"feature_{i}" for i in range(n_feat)]
+        )
+        try:
+            num_class = int(dump.get("num_class", 0) or 0)
+        except (TypeError, ValueError):
+            num_class = 0
+        objective = str(dump.get("objective", "") or "")
+        classes: list[str | int | float] | None = None
+        if objective.startswith("binary") or (
+            objective.startswith("multiclass") and num_class <= 1
+        ):
+            classes = [0, 1]
+        elif num_class > 1:
+            classes = list(range(num_class))
+        features = [
+            FeatureRequirement(
+                index=i,
+                name=name,
+                expected_dtype="float32",
+                is_auto_generated_name=auto,
+            )
+            for i, name in enumerate(names)
+        ]
+        return ModelSchema(n_features_in=n_feat, features=features, classes=classes)
+
+    @staticmethod
     def _extract_booster_schema(booster: Any) -> ModelSchema:
         """Schema for a native ``xgb.Booster`` (no sklearn attributes).
 
@@ -180,6 +257,9 @@ class UniversalSchemaDetector:
         are inferred from the objective (binary ``[0, 1]``, multiclass
         ``[0..C-1]``, ``None`` for regression/ranking).
         """
+        lgb_schema = UniversalSchemaDetector._extract_lgb_booster_schema(booster)
+        if lgb_schema is not None:
+            return lgb_schema
         try:
             n = int(booster.num_features())
         except Exception:
