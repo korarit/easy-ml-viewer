@@ -15,6 +15,7 @@ import { GnbBellInspectorPanel } from './components/GnbBellInspectorPanel';
 import { DiscreteNbInspectorPanel } from './components/DiscreteNbInspectorPanel';
 import { DiscriminantInspectorPanel } from './components/DiscriminantInspectorPanel';
 import { TreeInspectorPanel } from './components/TreeInspectorPanel';
+import { ForestInspectorPanel } from './components/ForestInspectorPanel';
 import { useModelStore } from './store/useModelStore';
 import { useSystemStore } from '../../core/store/useSystemStore';
 
@@ -74,6 +75,7 @@ export function ModelStepView() {
       <DiscreteNbInspectorPanel />
       <DiscriminantInspectorPanel />
       <TreeInspectorPanel />
+      <ForestInspectorPanel />
 
       <div className="flex justify-between">
         <button
