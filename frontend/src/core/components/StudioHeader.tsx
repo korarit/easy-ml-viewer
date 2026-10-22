@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Activity, Clapperboard, FileDown, GitCompareArrows, Keyboard, LayoutGrid, MonitorCog, Package, Search, Tags, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Check, Clapperboard, EllipsisVertical, FileDown, GitCompareArrows, LayoutGrid, Lock, MonitorCog, Moon, Package, Search, Sun, Tags } from 'lucide-react';
 import { useSystemStore, type WorkflowStep } from '../store/useSystemStore';
 import { useStudioLayoutStore } from '../../domains/studio-ux/store/useStudioLayoutStore';
 import { useRecordingStore } from '../../domains/recording/store/useRecordingStore';
@@ -24,9 +24,47 @@ export function StudioHeader() {
   const setBakeModal = useRecordingStore((s) => s.setBakeModal);
   const setCompareOpen = useDualCompareStore((s) => s.setCompareOpen);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [theme, setTheme] = useState(() =>
+    typeof document !== 'undefined' ? (document.documentElement.dataset.theme ?? 'dark') : 'dark',
+  );
+  const moreRef = useRef<HTMLDivElement | null>(null);
   const setExportModal = useExportStore((s) => s.setModal);
   const isReplayMode = useRecordingStore((s) => s.isReplayMode);
   const online = health?.status === 'healthy' || health?.status === 'degraded';
+
+  const toggleTheme = () => {
+    const next = theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = next;
+    try {
+      localStorage.setItem('emv-theme', next);
+    } catch {
+      /* private mode — ignore */
+    }
+    setTheme(next);
+  };
+
+  // Close the overflow menu on outside click / Esc.
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onDown = (e: PointerEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMoreOpen(false);
+    };
+    window.addEventListener('pointerdown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [moreOpen]);
+
+  const iconBtn =
+    'flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md p-2 transition-colors';
+  const primaryBtn =
+    'flex min-h-[36px] items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors';
 
   return (
     <header
@@ -51,9 +89,10 @@ export function StudioHeader() {
                 : 'Backend offline — start it on port 30211'
             }
           >
+            {/* System health uses neutral blue/gray — red/green are reserved for data classes. */}
             <span
               className="inline-block h-2 w-2 rounded-full"
-              style={{ background: online ? 'var(--ml-class-0)' : 'var(--ml-class-1)' }}
+              style={{ background: online ? 'var(--ml-primary)' : 'var(--text-muted)' }}
             />
             <span style={{ color: 'var(--text-secondary)' }}>
               {online ? '100% OFFLINE STUDIO' : 'BACKEND OFFLINE'}
@@ -63,6 +102,9 @@ export function StudioHeader() {
       </div>
 
       <nav className="hidden items-center gap-1 lg:flex" aria-label="Workflow steps">
+        <span className="mr-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+          Step {activeStep}/5
+        </span>
         {STEPS.map((s, i) => {
           const locked = s.id > unlockedMaxStep;
           const active = s.id === activeStep;
@@ -70,24 +112,29 @@ export function StudioHeader() {
           return (
             <div key={s.id} className="flex items-center gap-1">
               {i > 0 && (
-                <span className="mx-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                  →
+                <span className="mx-0.5 text-xs" style={{ color: 'var(--text-muted)' }} aria-hidden>
+                  ›
                 </span>
               )}
               <button
                 disabled={locked}
                 onClick={() => setActiveStep(s.id)}
                 title={locked ? 'Locked — complete previous steps first' : `Go to ${s.label}`}
-                className="rounded-md px-2.5 py-1.5 text-xs font-medium"
+                aria-current={active ? 'step' : undefined}
+                className="flex min-h-[36px] items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium"
                 style={{
-                  background: active ? 'transparent' : 'transparent',
+                  background: active ? 'var(--ml-primary)' : 'transparent',
                   border: active ? '1px solid var(--ml-primary)' : '1px solid transparent',
-                  color: locked ? 'var(--text-muted)' : active ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  opacity: locked ? 0.5 : 1,
+                  color: active ? '#fff' : locked ? 'var(--text-muted)' : 'var(--text-secondary)',
+                  opacity: locked ? 0.6 : 1,
                   cursor: locked ? 'not-allowed' : 'pointer',
                 }}
               >
-                {done ? '✓ ' : ''}
+                {locked ? (
+                  <Lock size={12} aria-hidden />
+                ) : done ? (
+                  <Check size={12} aria-hidden />
+                ) : null}
                 {s.id}. {s.label}
               </button>
             </div>
@@ -96,67 +143,49 @@ export function StudioHeader() {
       </nav>
 
       <div className="flex items-center gap-2">
+        {/* Primary: the 3 actions that move work forward. Everything else lives in ⋯. */}
         <button
-          title="Instant 20-model demo gallery (offline)"
+          title="Try a ready-made demo in one click (offline)"
           onClick={() => setGalleryOpen(true)}
-          className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium md:flex"
-          style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
+          className={primaryBtn}
+          style={{ background: 'var(--ml-primary)', color: '#fff' }}
         >
           <LayoutGrid size={14} />
-          Demo Gallery
-        </button>
-        <button
-          title="Compare 2 .mlv recordings side-by-side (Alt+D jumps conflicts)"
-          onClick={() => setCompareOpen(true)}
-          className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium md:flex"
-          style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
-        >
-          <GitCompareArrows size={14} />
-          Compare 2 Models
-        </button>
-        <button
-          title="Bake .mlv recording (MsgPack + Zstd)"
-          onClick={() => setBakeModal(true)}
-          className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium md:flex"
-          style={{
-            border: `1px solid ${isReplayMode ? 'rgba(99,102,241,0.6)' : 'var(--border-subtle)'}`,
-            color: 'var(--text-secondary)',
-          }}
-        >
-          <Package size={14} />
-          📦 Bake .mlv
-        </button>
-        <button
-          title="Export enriched CSV/XLSX, 3D video or snapshot (Ctrl+E)"
-          onClick={() => setExportModal(true)}
-          className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium md:flex"
-          style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
-        >
-          <FileDown size={14} />
-          📤 Export &amp; Share
+          Try Demo
         </button>
         <button
           title="Search commands, jump to row, change axes (Ctrl+K)"
           onClick={() => setPalette(true)}
-          className="hidden items-center gap-2 rounded-md px-3 py-1.5 text-xs md:flex"
-          style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', minWidth: 220 }}
+          className={`${primaryBtn} hidden md:flex`}
+          style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', minWidth: 200 }}
         >
           <Search size={14} />
-          <span className="flex-1 text-left">Search & Commands…</span>
+          <span className="flex-1 text-left">Search…</span>
           <kbd className="font-mono-tabular text-[10px]" style={{ color: 'var(--text-muted)' }}>⌘K</kbd>
         </button>
         <button
-          title="Edit class & feature aliases"
-          onClick={() => setAliasModal(true)}
-          className="rounded-md p-2"
+          title="Export table, 3D video or report (Ctrl+E)"
+          onClick={() => setExportModal(true)}
+          className={`${primaryBtn} hidden md:flex`}
           style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
         >
-          <Tags size={16} />
+          <FileDown size={14} />
+          Export
+        </button>
+        <button
+          title={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}
+          onClick={toggleTheme}
+          aria-label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}
+          className={iconBtn}
+          style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
+        >
+          {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
         </button>
         <button
           title="Toggle cinema fullscreen mode (Tab)"
           onClick={() => toggleCinema()}
-          className="rounded-md p-2"
+          aria-pressed={cinemaMode}
+          className={iconBtn}
           style={{
             border: '1px solid var(--border-subtle)',
             color: cinemaMode ? '#fff' : 'var(--text-secondary)',
@@ -166,28 +195,79 @@ export function StudioHeader() {
           <Clapperboard size={16} />
         </button>
         <button
-          title="System diagnostics (Ctrl+Shift+D)"
+          title="System diagnostics & shortcuts (Ctrl+Shift+D, Shift+?)"
           onClick={() => setDiagnosticsOpen(true)}
-          className="rounded-md p-2"
+          className={iconBtn}
           style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
         >
           <MonitorCog size={16} />
         </button>
-        <button
-          title="Keyboard shortcuts (Shift+?)"
-          onClick={() => setDiagnosticsOpen(true)}
-          className="rounded-md p-2"
-          style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
-        >
-          <Keyboard size={16} />
-        </button>
-        <span className="hidden text-[11px] xl:inline" style={{ color: 'var(--text-muted)' }}>
-          <Activity size={12} className="mr-1 inline" />
-          Phase 01 · App Shell
-        </span>
-        <span className="hidden" aria-hidden>
-          <Trash2 size={12} />
-        </span>
+        <div className="relative" ref={moreRef}>
+          <button
+            title="More studio actions"
+            onClick={() => setMoreOpen((v) => !v)}
+            aria-expanded={moreOpen}
+            aria-haspopup="menu"
+            aria-label="More studio actions"
+            className={iconBtn}
+            style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
+          >
+            <EllipsisVertical size={16} />
+          </button>
+          {moreOpen && (
+            <div
+              role="menu"
+              className="absolute right-0 z-50 mt-2 w-60 rounded-lg p-1.5"
+              style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-strong)' }}
+            >
+              {[
+                {
+                  icon: <GitCompareArrows size={14} />,
+                  label: 'Compare 2 models (.mlv)',
+                  hint: 'Alt+D finds conflicts',
+                  fn: () => setCompareOpen(true),
+                },
+                {
+                  icon: <Package size={14} />,
+                  label: isReplayMode ? 'Replay mode: baking locked' : 'Bake .mlv recording',
+                  hint: 'MsgPack + Zstd',
+                  fn: () => setBakeModal(true),
+                },
+                {
+                  icon: <Tags size={14} />,
+                  label: 'Edit class & feature aliases',
+                  hint: '',
+                  fn: () => setAliasModal(true),
+                },
+              ].map((a) => (
+                <button
+                  key={a.label}
+                  role="menuitem"
+                  onClick={() => {
+                    a.fn();
+                    setMoreOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs"
+                  style={{ color: 'var(--text-primary)' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--surface-elevated)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  <span style={{ color: 'var(--text-secondary)' }}>{a.icon}</span>
+                  <span className="flex-1">{a.label}</span>
+                  {a.hint && (
+                    <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                      {a.hint}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       <DemoGalleryModal open={galleryOpen} onClose={() => setGalleryOpen(false)} />
     </header>

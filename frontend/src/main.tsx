@@ -5,7 +5,13 @@ import './core/theme/studio.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root element missing');
-if (!document.documentElement.dataset.theme) document.documentElement.dataset.theme = 'dark';
+// Restore persisted theme (default dark). Header toggle writes `emv-theme`.
+try {
+  const saved = localStorage.getItem('emv-theme');
+  document.documentElement.dataset.theme = saved === 'light' ? 'light' : 'dark';
+} catch {
+  if (!document.documentElement.dataset.theme) document.documentElement.dataset.theme = 'dark';
+}
 
 createRoot(root).render(
   <StrictMode>
