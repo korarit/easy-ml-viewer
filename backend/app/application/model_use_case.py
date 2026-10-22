@@ -30,6 +30,7 @@ from app.domains.model_engine.adapters.probabilistic import gaussian_nb as _gnb_
 from app.domains.model_engine.adapters.probabilistic import discrete_nb as _discrete_nb_adapter  # noqa: F401
 from app.domains.model_engine.adapters.probabilistic import discriminant as _discriminant_adapter  # noqa: F401
 from app.domains.model_engine.adapters.trees import decision_tree as _decision_tree_adapter  # noqa: F401
+from app.domains.model_engine.adapters.trees import random_forest as _random_forest_adapter  # noqa: F401
 
 _ALLOWED_MODEL_SUFFIXES = {".joblib", ".pkl", ".pickle"}
 _ALLOWED_SAMPLE_SUFFIXES = {".joblib", ".pkl", ".pickle"}
