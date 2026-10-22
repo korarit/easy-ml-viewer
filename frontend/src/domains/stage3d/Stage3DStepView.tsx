@@ -87,6 +87,12 @@ export function Stage3DStepView() {
   const frameForPinning = projPinning === 'current_row' ? playbackFrameIndex : -1;
   useEffect(() => {
     if (!ready || !datasetId || !modelId || !mappingId) return;
+    // Don't bake while axes still point at a previous dataset's columns
+    // (e.g. feat_income/feat_age after switching to SVR housing).
+    // ensureDefaults above will re-pick valid axes and re-trigger this effect.
+    if (projMode === 'axis_explorer' && featureNames.length > 0) {
+      if (!featureNames.includes(projX) || !featureNames.includes(projY)) return;
+    }
     const timer = window.setTimeout(() => {
       void useProjectionStore.getState().fetchSurface({
         datasetId,

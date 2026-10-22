@@ -94,12 +94,14 @@ export const useProjectionStore = create<ProjectionState>((set, get) => ({
   projError: null,
 
   ensureDefaults: (features) => {
-    const s = get();
-    if (s.xFeature && s.yFeature && s.xFeature !== s.yFeature) return;
     if (features.length === 0) return;
+    const s = get();
+    const names = new Set(features.map((f) => f.name));
+    const stillValid = !!s.xFeature && !!s.yFeature && s.xFeature !== s.yFeature && names.has(s.xFeature) && names.has(s.yFeature);
+    if (stillValid) return;
     const [x, y] = topTwo(features);
     if (!x) return;
-    set({ xFeature: x, yFeature: y || x });
+    set({ xFeature: x, yFeature: y || x, projError: null, surfaceData: null });
   },
 
   setXFeature: (name) => {
@@ -153,6 +155,11 @@ export const useProjectionStore = create<ProjectionState>((set, get) => ({
     const s = get();
     if (!datasetId || !modelId || !mappingId) return;
     if (s.mode === 'axis_explorer' && (!s.xFeature || !s.yFeature)) return;
+    // Drop stale requests whose axes are not in the current mapping
+    // (happens right after a dataset/model switch before ensureDefaults re-runs).
+    if (s.mode === 'axis_explorer' && featureNames.length > 0) {
+      if (!featureNames.includes(s.xFeature) || !featureNames.includes(s.yFeature)) return;
+    }
     if (inFlightAbort) inFlightAbort.abort();
     const controller = new AbortController();
     inFlightAbort = controller;

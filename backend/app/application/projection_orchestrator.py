@@ -118,10 +118,11 @@ class ProjectionOrchestrator:
             resolved_x = _resolve_feature_index(items, req.x_feature)
             resolved_y = _resolve_feature_index(items, req.y_feature)
             if resolved_x is None or resolved_y is None:
+                available = [i.dataset_column_name or i.model_feature_name for i in items]
                 raise DomainException(
                     code="PROJECTION_UNKNOWN_FEATURE",
                     message=f"Unknown feature(s): x='{req.x_feature}', y='{req.y_feature}'",
-                    details={"x_feature": req.x_feature, "y_feature": req.y_feature},
+                    details={"x_feature": req.x_feature, "y_feature": req.y_feature, "available_features": available},
                     http_status=422,
                 )
             if resolved_x == resolved_y:
