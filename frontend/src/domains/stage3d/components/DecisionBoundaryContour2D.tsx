@@ -31,6 +31,8 @@ export function DecisionBoundaryContour2D({ contours }: { contours: ContourLevel
   const showConfidenceIsolines = useStage3DStore((s) => s.showConfidenceIsolines);
 
   const visible = contours.filter((c) => {
+    // Phase 43 — 'margin' parallels are owned by SvmKernelContour2D.
+    if (c.kind === 'margin') return false;
     if (c.kind === 'decision' || c.kind === 'elevation') return showBoundaryLines;
     return showConfidenceIsolines;
   });

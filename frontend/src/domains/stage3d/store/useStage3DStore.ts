@@ -49,6 +49,11 @@ interface Stage3DState {
   showNormalVector: boolean;
   showMarginCorridor: boolean;
   showSparsityBadges: boolean;
+  /** Phase 43 — distance & kernel overlay visibility. */
+  showKnnRadar: boolean;
+  showSpiderLines: boolean;
+  showSvHalos: boolean;
+  showSvmMargins: boolean;
   isLoading: boolean;
   stageError: string | null;
   contextLost: boolean;
@@ -66,6 +71,10 @@ interface Stage3DState {
   setShowNormalVector: (v: boolean) => void;
   setShowMarginCorridor: (v: boolean) => void;
   setShowSparsityBadges: (v: boolean) => void;
+  setShowKnnRadar: (v: boolean) => void;
+  setShowSpiderLines: (v: boolean) => void;
+  setShowSvHalos: (v: boolean) => void;
+  setShowSvmMargins: (v: boolean) => void;
   setActiveFrameIndex: (frameIdx: number) => void;
   setAxes: (xIdx: number, yIdx: number) => Promise<void>;
   setSurfaceResolution: (res: number) => Promise<void>;
@@ -132,6 +141,10 @@ export const useStage3DStore = create<Stage3DState>((set, get) => ({
   showNormalVector: true,
   showMarginCorridor: true,
   showSparsityBadges: true,
+  showKnnRadar: true,
+  showSpiderLines: true,
+  showSvHalos: true,
+  showSvmMargins: true,
   isLoading: false,
   stageError: null,
   contextLost: false,
@@ -160,6 +173,14 @@ export const useStage3DStore = create<Stage3DState>((set, get) => ({
   setShowMarginCorridor: (v) => set({ showMarginCorridor: v }),
 
   setShowSparsityBadges: (v) => set({ showSparsityBadges: v }),
+
+  setShowKnnRadar: (v) => set({ showKnnRadar: v }),
+
+  setShowSpiderLines: (v) => set({ showSpiderLines: v }),
+
+  setShowSvHalos: (v) => set({ showSvHalos: v }),
+
+  setShowSvmMargins: (v) => set({ showSvmMargins: v }),
 
   setActiveFrameIndex: (frameIdx) => {
     const { points } = get();

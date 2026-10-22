@@ -2,6 +2,7 @@
 import { apiFetch } from '../../../core/api/client';
 import type {
   Contour2DPayload,
+  KnnFrame2DPayload,
   LodLevel,
   PinningMode,
   ProjectionMode,
@@ -59,7 +60,7 @@ interface Contour2DResponse {
   contours: Array<{
     threshold: number;
     class_index: number;
-    kind: 'decision' | 'confidence' | 'elevation';
+    kind: 'decision' | 'confidence' | 'elevation' | 'margin';
     line_segments: Array<[number, number, number, number]>;
   }>;
   response_curve_1d: { x_values_raw: number[]; y_pred: number[] } | null;
@@ -96,6 +97,37 @@ interface Contour2DResponse {
       class_a: number | null;
       class_b: number | null;
     }>;
+  } | null;
+  svm_2d: {
+    model_type: string;
+    kernel: string;
+    gamma: number | null;
+    c: number | null;
+    degree: number;
+    coef0: number;
+    is_regressor: boolean;
+    is_binary: boolean;
+    n_classes: number;
+    n_support_total: number;
+    is_linear_no_sv: boolean;
+    support_vectors_2d: Array<{
+      train_index: number;
+      x_world: number;
+      y_world: number;
+      dual_coef: number;
+      halo_scale: number;
+      status: 'on_margin' | 'violates_margin' | 'support';
+    }>;
+    halos_truncated: boolean;
+  } | null;
+  knn_2d: {
+    is_knn_model: boolean;
+    model_type: string;
+    k: number;
+    weights_mode: string;
+    metric: string;
+    is_radius_model: boolean;
+    radius: number | null;
   } | null;
   computation_time_ms: number;
 }
@@ -190,6 +222,126 @@ export async function fetchContour2D(
           })),
         }
       : null,
+    svm2d: data.svm_2d
+      ? {
+          modelType: data.svm_2d.model_type,
+          kernel: data.svm_2d.kernel,
+          gamma: data.svm_2d.gamma,
+          c: data.svm_2d.c,
+          degree: data.svm_2d.degree,
+          coef0: data.svm_2d.coef0,
+          isRegressor: data.svm_2d.is_regressor,
+          isBinary: data.svm_2d.is_binary,
+          nClasses: data.svm_2d.n_classes,
+          nSupportTotal: data.svm_2d.n_support_total,
+          isLinearNoSv: data.svm_2d.is_linear_no_sv,
+          halos: data.svm_2d.support_vectors_2d.map((h) => ({
+            trainIndex: h.train_index,
+            xWorld: h.x_world,
+            yWorld: h.y_world,
+            dualCoef: h.dual_coef,
+            haloScale: h.halo_scale,
+            status: h.status,
+          })),
+          halosTruncated: data.svm_2d.halos_truncated,
+        }
+      : null,
+    knn2d: data.knn_2d
+      ? {
+          isKnnModel: data.knn_2d.is_knn_model,
+          modelType: data.knn_2d.model_type,
+          k: data.knn_2d.k,
+          weightsMode: data.knn_2d.weights_mode,
+          metric: data.knn_2d.metric,
+          isRadiusModel: data.knn_2d.is_radius_model,
+          radius: data.knn_2d.radius,
+        }
+      : null,
+    computationTimeMs: data.computation_time_ms,
+  };
+}
+
+export interface FetchKnnFrameParams {
+  datasetId: string;
+  modelId: string;
+  mappingId: string;
+  xFeature: string;
+  yFeature: string;
+  rowIndex: number;
+}
+
+interface KnnFrame2DResponse {
+  x_feature: string;
+  y_feature: string;
+  row_index: number;
+  query_world: [number, number];
+  radar_radius_raw: number;
+  radar_radius_world: [number, number];
+  neighbors: Array<{
+    train_index: number;
+    x_world: number;
+    y_world: number;
+    distance_full: number;
+    distance_2d: number;
+    vote_weight: number;
+    rank: number;
+    label: string | number | null;
+  }>;
+  votes: Record<string, number>;
+  predicted: string | number | null;
+  k: number;
+  weights_mode: string;
+  metric: string;
+  is_radius_model: boolean;
+  outlier: boolean;
+  display_capped: boolean;
+  total_neighbors: number;
+  computation_time_ms: number;
+}
+
+/** Phase 43 — typed client for POST /api/v1/projection/knn-frame-2d. */
+export async function fetchKnnFrame2D(
+  params: FetchKnnFrameParams,
+  signal?: AbortSignal,
+): Promise<KnnFrame2DPayload> {
+  const data = await apiFetch<KnnFrame2DResponse>('/api/v1/projection/knn-frame-2d', {
+    method: 'POST',
+    body: JSON.stringify({
+      dataset_id: params.datasetId,
+      model_id: params.modelId,
+      mapping_id: params.mappingId,
+      x_feature: params.xFeature,
+      y_feature: params.yFeature,
+      row_index: params.rowIndex,
+    }),
+    signal,
+  });
+  return {
+    xFeature: data.x_feature,
+    yFeature: data.y_feature,
+    rowIndex: data.row_index,
+    queryWorld: data.query_world,
+    radarRadiusRaw: data.radar_radius_raw,
+    radarRadiusWorld: data.radar_radius_world,
+    neighbors: data.neighbors.map((n) => ({
+      trainIndex: n.train_index,
+      xWorld: n.x_world,
+      yWorld: n.y_world,
+      distanceFull: n.distance_full,
+      distance2d: n.distance_2d,
+      voteWeight: n.vote_weight,
+      rank: n.rank,
+      label: n.label,
+    })),
+    votes: data.votes,
+    predicted: data.predicted,
+    k: data.k,
+    weightsMode: data.weights_mode,
+    metric: data.metric,
+    isRadiusModel: data.is_radius_model,
+    outlier: data.outlier,
+    displayCapped: data.display_capped,
+    totalNeighbors: data.total_neighbors,
     computationTimeMs: data.computation_time_ms,
   };
 }

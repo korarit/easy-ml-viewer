@@ -84,6 +84,10 @@ export function LayerVisibilityControls2D() {
   const showNormalVector = useStage3DStore((s) => s.showNormalVector);
   const showMarginCorridor = useStage3DStore((s) => s.showMarginCorridor);
   const showSparsityBadges = useStage3DStore((s) => s.showSparsityBadges);
+  const showKnnRadar = useStage3DStore((s) => s.showKnnRadar);
+  const showSpiderLines = useStage3DStore((s) => s.showSpiderLines);
+  const showSvHalos = useStage3DStore((s) => s.showSvHalos);
+  const showSvmMargins = useStage3DStore((s) => s.showSvmMargins);
   const st = useStage3DStore.getState();
 
   const row = (label: string, checked: boolean, onChange: (v: boolean) => void, hint: string) => (
@@ -115,6 +119,10 @@ export function LayerVisibilityControls2D() {
         {row('Normal vector', showNormalVector, (v) => st.setShowNormalVector(v), 'Weight ascent arrow on the exact line')}
         {row('Margin corridor', showMarginCorridor, (v) => st.setShowMarginCorridor(v), 'SGD/Ridge z = ±1 band (W = 2/‖w‖)')}
         {row('Sparsity badges', showSparsityBadges, (v) => st.setShowSparsityBadges(v), 'L1 zeroed-axis warnings')}
+        {row('KNN radar circle', showKnnRadar, (v) => st.setShowKnnRadar(v), 'Expanding 2D radar around the active frame')}
+        {row('Spider lines', showSpiderLines, (v) => st.setShowSpiderLines(v), 'Laser links to the K reference rows')}
+        {row('SV halos', showSvHalos, (v) => st.setShowSvHalos(v), 'Diamond rings sized by |α|/C')}
+        {row('SVM margins', showSvmMargins, (v) => st.setShowSvmMargins(v), 'Curved f = ±1 parallels (RBF/poly)')}
       </div>
     </div>
   );

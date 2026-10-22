@@ -5,6 +5,7 @@ import { usePlaybackStore } from '../../playback/store/usePlaybackStore';
 import { sampleColormap } from '../../projection3d/components/colormaps';
 import { DecisionBoundaryContour2D, wy } from './DecisionBoundaryContour2D';
 import { LinearOverlays2D } from './surfaces_2d/LinearOverlays2D';
+import { DistanceOverlays2D } from './surfaces_2d/DistanceOverlays2D';
 import { ActiveDataPointReticle2D } from './ActiveDataPointReticle2D';
 import { WhatIfDisplacementVector2D } from './WhatIfDisplacementVector2D';
 
@@ -32,6 +33,7 @@ export function Stage2DCanvas() {
   const contourData = useProjectionStore((s) => s.contourData);
   const contourLoading = useProjectionStore((s) => s.contourLoading);
   const contourError = useProjectionStore((s) => s.contourError);
+  const knnFrame = useProjectionStore((s) => s.knnFrame);
   const colormap = useProjectionStore((s) => s.colormap);
   const points = useStage3DStore((s) => s.points);
   const activeFrameIndex = useStage3DStore((s) => s.activeFrameIndex);
@@ -219,6 +221,8 @@ export function Stage2DCanvas() {
                 xRangeRaw={contourData.xRangeRaw}
                 yRangeRaw={contourData.yRangeRaw}
               />
+              {/* Phase 43 — KNN radar, SVM margins, SV halos. */}
+              <DistanceOverlays2D contourData={contourData} knnFrame={knnFrame} />
               {/* Trajectory points */}
               <g aria-label="Trajectory points">
                 {points.map((p, f) => {
@@ -295,7 +299,32 @@ export function Stage2DCanvas() {
             2D Orthographic · {contourData.gridResolution}×{contourData.gridResolution} · X {contourData.xFeature} · Y{' '}
             {contourData.yFeature} · {contourData.computationTimeMs.toFixed(1)} ms
           </div>
-          {/* Phase 42 — exact linear formula badge (top-right, non-interactive). */}
+          {/* Phase 43 — KNN HUD badge (K · radar radius · vote tally). */}
+          {knnFrame && !knnFrame.outlier && (
+            <div
+              className="font-mono-tabular pointer-events-none absolute top-8 right-1 max-w-[70%] truncate rounded px-2 py-1 text-[11px]"
+              style={{ background: 'rgba(10,15,22,0.72)', color: 'var(--text-primary)' }}
+              title={`metric=${knnFrame.metric} weights=${knnFrame.weightsMode} row=${knnFrame.rowIndex}`}
+            >
+              K = {knnFrame.k} · Rₜ = {knnFrame.radarRadiusRaw.toPrecision(4)} · Votes:{' '}
+              {Object.entries(knnFrame.votes)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 3)
+                .map(([lab, w]) => `${lab} ${(w * 100).toFixed(0)}%`)
+                .join(' vs ')}
+              {knnFrame.displayCapped ? ` (+${knnFrame.totalNeighbors - knnFrame.neighbors.length} more)` : ''}
+            </div>
+          )}
+          {/* Phase 43 — SV truncation badge (top |dual|-ranked halves shown). */}
+          {contourData.svm2d && contourData.svm2d.halosTruncated && (
+            <div
+              className="font-mono-tabular pointer-events-none absolute top-8 left-1 rounded px-2 py-1 text-[11px]"
+              style={{ background: 'rgba(10,15,22,0.72)', color: '#7dd3fc' }}
+              title={`${contourData.svm2d.nSupportTotal} support vectors (${contourData.svm2d.kernel} kernel); showing top ${contourData.svm2d.halos.length} by |dual|`}
+            >
+              ◆ {contourData.svm2d.halos.length}/{contourData.svm2d.nSupportTotal} SVs · top-|α|
+            </div>
+          )}
           {contourData.linear2d && (
             <div
               className="font-mono-tabular pointer-events-none absolute top-1 right-1 max-w-[70%] truncate rounded px-2 py-1 text-[11px]"

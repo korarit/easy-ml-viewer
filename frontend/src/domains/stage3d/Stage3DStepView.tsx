@@ -147,6 +147,30 @@ export function Stage3DStepView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, datasetId, modelId, mappingId, queueKey, viewMode, projX, projY, projPinning, projRobust, frameForPinning, featureNames.join('|')]);
 
+  // Phase 43 — live KNN radar: refetch the per-frame neighbor state as the
+  // VCR scrubs (debounced; the contour cache already gates non-KNN scenes).
+  const surfaceVisualType = useStage3DStore((s) => s.surfaceVisualType);
+  const activeFrameIndex = useStage3DStore((s) => s.activeFrameIndex);
+  useEffect(() => {
+    if (!ready || !datasetId || !modelId || !mappingId || viewMode !== '2d') return;
+    if (surfaceVisualType !== 'voronoi_knn_proximity') return;
+    if (featureNames.length > 0 && (!featureNames.includes(projX) || !featureNames.includes(projY))) return;
+    const rowIndex = points[activeFrameIndex]?.original_row_index;
+    if (rowIndex === undefined || rowIndex < 0) return;
+    const timer = window.setTimeout(() => {
+      void useProjectionStore.getState().fetchKnnFrame({
+        datasetId,
+        modelId,
+        mappingId,
+        xFeature: projX,
+        yFeature: projY,
+        rowIndex,
+      });
+    }, 120);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, datasetId, modelId, mappingId, viewMode, surfaceVisualType, projX, projY, activeFrameIndex, points.length, featureNames.join('|')]);
+
   if (!ready) {
     return (
       <section

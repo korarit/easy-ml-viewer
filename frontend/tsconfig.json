@@ -17,5 +17,10 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["vite/client"]
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Standard Vite practice: co-located *.test.* run under vitest (separate
+  // config) once the runner is vendored — the app build must not compile them.
+  // (Phase 43 ships KnnRadar2D.test.tsx per the test plan; vitest/RTL cannot
+  // be installed under the project's 100% offline air-gap rule yet.)
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
 }

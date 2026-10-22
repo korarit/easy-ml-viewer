@@ -18,7 +18,8 @@ export interface AvailableFeature {
 export interface ContourLevel2D {
   threshold: number;
   classIndex: number;
-  kind: 'decision' | 'confidence' | 'elevation';
+  /** Phase 43 adds 'margin' (SVM f = ±1 parallels). */
+  kind: 'decision' | 'confidence' | 'elevation' | 'margin';
   /** World-coord segments [x1, y1, x2, y2] in [-5, +5]. */
   lineSegments: Array<[number, number, number, number]>;
 }
@@ -63,6 +64,79 @@ export interface Linear2DPayload {
   lines: Linear2DLinePayload[];
 }
 
+/** Phase 43 — one support-vector halo (mirrors SvmHalo2D + world coords). */
+export interface SvmHalo2D {
+  trainIndex: number;
+  xWorld: number;
+  yWorld: number;
+  dualCoef: number;
+  /** |α|/C clamped to [0, 1] — drives the diamond radius. */
+  haloScale: number;
+  status: 'on_margin' | 'violates_margin' | 'support';
+}
+
+/** Phase 43 — static SVM overlay payload (mirrors SvmState2D). */
+export interface Svm2DPayload {
+  modelType: string;
+  kernel: string;
+  gamma: number | null;
+  c: number | null;
+  degree: number;
+  coef0: number;
+  isRegressor: boolean;
+  isBinary: boolean;
+  nClasses: number;
+  nSupportTotal: number;
+  isLinearNoSv: boolean;
+  halos: SvmHalo2D[];
+  halosTruncated: boolean;
+}
+
+/** Phase 43 — static KNN descriptor (mirrors the knn_2d contour field). */
+export interface KnnStatic2D {
+  isKnnModel: boolean;
+  modelType: string;
+  k: number;
+  weightsMode: string;
+  metric: string;
+  isRadiusModel: boolean;
+  radius: number | null;
+}
+
+/** Phase 43 — one spider-line endpoint in world coords. */
+export interface KnnFrameNeighbor {
+  trainIndex: number;
+  xWorld: number;
+  yWorld: number;
+  distanceFull: number;
+  distance2d: number;
+  voteWeight: number;
+  rank: number;
+  label: string | number | null;
+}
+
+/** Phase 43 — per-frame radar payload (mirrors KnnFrame2DResponse). */
+export interface KnnFrame2DPayload {
+  xFeature: string;
+  yFeature: string;
+  rowIndex: number;
+  queryWorld: [number, number];
+  radarRadiusRaw: number;
+  /** Ellipse radii (world units) — raw circles skew under anisotropic spans. */
+  radarRadiusWorld: [number, number];
+  neighbors: KnnFrameNeighbor[];
+  votes: Record<string, number>;
+  predicted: string | number | null;
+  k: number;
+  weightsMode: string;
+  metric: string;
+  isRadiusModel: boolean;
+  outlier: boolean;
+  displayCapped: boolean;
+  totalNeighbors: number;
+  computationTimeMs: number;
+}
+
 /** Phase 41 — dense 2D contour payload (mirrors Contour2DResponse). */
 export interface Contour2DPayload {
   gridResolution: number;
@@ -80,6 +154,10 @@ export interface Contour2DPayload {
   responseCurve1D: { xValuesRaw: number[]; yPred: number[] } | null;
   /** Phase 42 — exact linear overlay; null for non-linear / pipelined models. */
   linear2d: Linear2DPayload | null;
+  /** Phase 43 — SV halos in world coords; null when N/A (non-SVM / linear SVM). */
+  svm2d: Svm2DPayload | null;
+  /** Phase 43 — static KNN descriptor; null when the model is not KNN. */
+  knn2d: KnnStatic2D | null;
   computationTimeMs: number;
 }
 

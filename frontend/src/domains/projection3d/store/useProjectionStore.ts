@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import { fetchContour2D, fetchSurfaceMesh } from '../api/projectionApi';
+import { fetchContour2D, fetchKnnFrame2D, fetchSurfaceMesh } from '../api/projectionApi';
 import type {
   AvailableFeature,
   ColormapName,
   Contour2DPayload,
+  KnnFrame2DPayload,
   LodLevel,
   PinningMode,
   ProjectionMode,
@@ -33,6 +34,9 @@ interface ProjectionState {
   contourData: Contour2DPayload | null;
   contourLoading: boolean;
   contourError: string | null;
+  /** Phase 43 — live per-frame KNN radar (refetched as the VCR scrubs). */
+  knnFrame: KnnFrame2DPayload | null;
+  knnFrameLoading: boolean;
   ensureDefaults: (features: AvailableFeature[]) => void;
   setXFeature: (name: string) => void;
   setYFeature: (name: string) => void;
@@ -62,11 +66,20 @@ interface ProjectionState {
     queueRowIndices: number[];
     currentFrameIndex: number | null;
   }) => Promise<void>;
+  fetchKnnFrame: (params: {
+    datasetId: string;
+    modelId: string;
+    mappingId: string;
+    xFeature: string;
+    yFeature: string;
+    rowIndex: number;
+  }) => Promise<void>;
   clearError: () => void;
 }
 
 let inFlightAbort: AbortController | null = null;
 let contourAbort: AbortController | null = null;
+let knnFrameAbort: AbortController | null = null;
 /** Phase 41 — frontend contour cache so 2D↔3D toggles never refetch. */
 const contourCache = new Map<string, Contour2DPayload>();
 
@@ -123,6 +136,8 @@ export const useProjectionStore = create<ProjectionState>((set, get) => ({
   contourData: null,
   contourLoading: false,
   contourError: null,
+  knnFrame: null,
+  knnFrameLoading: false,
 
   ensureDefaults: (features) => {
     if (features.length === 0) return;
@@ -300,4 +315,28 @@ export const useProjectionStore = create<ProjectionState>((set, get) => ({
   },
 
   clearError: () => set({ projError: null, contourError: null }),
+
+  fetchKnnFrame: async ({ datasetId, modelId, mappingId, xFeature, yFeature, rowIndex }) => {
+    if (!datasetId || !modelId || !mappingId || !xFeature || !yFeature || rowIndex < 0) return;
+    if (knnFrameAbort) knnFrameAbort.abort();
+    const controller = new AbortController();
+    knnFrameAbort = controller;
+    set({ knnFrameLoading: true });
+    try {
+      const data = await fetchKnnFrame2D(
+        { datasetId, modelId, mappingId, xFeature, yFeature, rowIndex },
+        controller.signal,
+      );
+      if (controller.signal.aborted) return;
+      set({ knnFrame: data });
+    } catch {
+      if (controller.signal.aborted) return;
+      // A missing radar (non-KNN scene, stale axes) clears the overlay
+      // instead of erroring — the contour heatmap remains the fallback.
+      set({ knnFrame: null });
+    } finally {
+      if (knnFrameAbort === controller) knnFrameAbort = null;
+      set({ knnFrameLoading: false });
+    }
+  },
 }));
