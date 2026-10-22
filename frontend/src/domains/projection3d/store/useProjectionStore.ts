@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { fetchContour2D, fetchKnnFrame2D, fetchSurfaceMesh } from '../api/projectionApi';
+import { fetchBoostFrame2D, fetchContour2D, fetchKnnFrame2D, fetchSurfaceMesh } from '../api/projectionApi';
 import type {
   AvailableFeature,
+  BoostFrame2DPayload,
   ColormapName,
   Contour2DPayload,
   KnnFrame2DPayload,
@@ -37,6 +38,9 @@ interface ProjectionState {
   /** Phase 43 — live per-frame KNN radar (refetched as the VCR scrubs). */
   knnFrame: KnnFrame2DPayload | null;
   knnFrameLoading: boolean;
+  /** Phase 46 — live per-frame boosting SHAP vector (same scrub contract). */
+  boostFrame: BoostFrame2DPayload | null;
+  boostFrameLoading: boolean;
   ensureDefaults: (features: AvailableFeature[]) => void;
   setXFeature: (name: string) => void;
   setYFeature: (name: string) => void;
@@ -74,12 +78,21 @@ interface ProjectionState {
     yFeature: string;
     rowIndex: number;
   }) => Promise<void>;
+  fetchBoostFrame: (params: {
+    datasetId: string;
+    modelId: string;
+    mappingId: string;
+    xFeature: string;
+    yFeature: string;
+    rowIndex: number;
+  }) => Promise<void>;
   clearError: () => void;
 }
 
 let inFlightAbort: AbortController | null = null;
 let contourAbort: AbortController | null = null;
 let knnFrameAbort: AbortController | null = null;
+let boostFrameAbort: AbortController | null = null;
 /** Phase 41 — frontend contour cache so 2D↔3D toggles never refetch. */
 const contourCache = new Map<string, Contour2DPayload>();
 
@@ -138,6 +151,8 @@ export const useProjectionStore = create<ProjectionState>((set, get) => ({
   contourError: null,
   knnFrame: null,
   knnFrameLoading: false,
+  boostFrame: null,
+  boostFrameLoading: false,
 
   ensureDefaults: (features) => {
     if (features.length === 0) return;
@@ -337,6 +352,30 @@ export const useProjectionStore = create<ProjectionState>((set, get) => ({
     } finally {
       if (knnFrameAbort === controller) knnFrameAbort = null;
       set({ knnFrameLoading: false });
+    }
+  },
+
+  fetchBoostFrame: async ({ datasetId, modelId, mappingId, xFeature, yFeature, rowIndex }) => {
+    if (!datasetId || !modelId || !mappingId || !xFeature || !yFeature || rowIndex < 0) return;
+    if (boostFrameAbort) boostFrameAbort.abort();
+    const controller = new AbortController();
+    boostFrameAbort = controller;
+    set({ boostFrameLoading: true });
+    try {
+      const data = await fetchBoostFrame2D(
+        { datasetId, modelId, mappingId, xFeature, yFeature, rowIndex },
+        controller.signal,
+      );
+      if (controller.signal.aborted) return;
+      set({ boostFrame: data });
+    } catch {
+      if (controller.signal.aborted) return;
+      // Non-boosting scenes (or stale axes) clear the vector instead of
+      // erroring — static polygons and the heatmap remain the fallback.
+      set({ boostFrame: null });
+    } finally {
+      if (boostFrameAbort === controller) boostFrameAbort = null;
+      set({ boostFrameLoading: false });
     }
   },
 }));

@@ -8,6 +8,7 @@ import { LinearOverlays2D } from './surfaces_2d/LinearOverlays2D';
 import { DistanceOverlays2D } from './surfaces_2d/DistanceOverlays2D';
 import { ProbabilisticOverlays2D } from './surfaces_2d/ProbabilisticOverlays2D';
 import { TreesOverlays2D } from './surfaces_2d/TreesOverlays2D';
+import { BoostingOverlays2D } from './surfaces_2d/BoostingOverlays2D';
 import { ActiveDataPointReticle2D } from './ActiveDataPointReticle2D';
 import { WhatIfDisplacementVector2D } from './WhatIfDisplacementVector2D';
 
@@ -36,6 +37,7 @@ export function Stage2DCanvas() {
   const contourLoading = useProjectionStore((s) => s.contourLoading);
   const contourError = useProjectionStore((s) => s.contourError);
   const knnFrame = useProjectionStore((s) => s.knnFrame);
+  const boostFrame = useProjectionStore((s) => s.boostFrame);
   const colormap = useProjectionStore((s) => s.colormap);
   const points = useStage3DStore((s) => s.points);
   const activeFrameIndex = useStage3DStore((s) => s.activeFrameIndex);
@@ -230,6 +232,8 @@ export function Stage2DCanvas() {
               <ProbabilisticOverlays2D contourData={contourData} />
               {/* Phase 45 — tree cuts, leaf boxes, forest mosaic, adaboost cascade. */}
               <TreesOverlays2D contourData={contourData} />
+              {/* Phase 46 — boosting polygons, bin grids, oblivious checkerboard, SHAP vectors. */}
+              <BoostingOverlays2D contourData={contourData} boostFrame={boostFrame} />
               {/* Trajectory points */}
               <g aria-label="Trajectory points">
                 {points.map((p, f) => {
@@ -406,6 +410,31 @@ export function Stage2DCanvas() {
               {contourData.probabilistic2d.isCovarianceApproximated && ' · Σ≈'}
             </div>
           )}
+          {/* Phase 46 — boosting heavyweight badge (family summary + live SHAP readout). */}
+          {contourData.boosting2d &&
+            (() => {
+              const b = contourData.boosting2d!;
+              const live =
+                boostFrame && boostFrame.family === b.family ? boostFrame.shap : b.shapVector;
+              return (
+                <div
+                  className="font-mono-tabular pointer-events-none absolute right-1 bottom-1 max-w-[70%] truncate rounded px-2 py-1 text-[11px]"
+                  style={{ background: 'rgba(10,15,22,0.72)', color: 'var(--text-primary)' }}
+                  title={b.formula}
+                >
+                  {(b.family === 'xgboost' || b.family === 'lightgbm') &&
+                    `⚡ ${b.family === 'xgboost' ? 'XGB' : 'LGBM'} tree-0 polygons · T=${b.nEstimators}${b.segmentsTruncated || b.leavesTruncated ? ' · capped' : ''}`}
+                  {b.family === 'sklearn_gbm' &&
+                    `▦ GBM top-${b.treesExported}/${b.nEstimators} residual cuts${b.segmentsTruncated ? ' · capped' : ''}`}
+                  {b.family === 'hist_gbm' &&
+                    `▤ HistGBM ${b.binEdgesXRaw.length + 1}×${b.binEdgesYRaw.length + 1} bins${b.activeBin ? ` · bin (${b.activeBin[0]}, ${b.activeBin[1]})` : ''}`}
+                  {b.family === 'catboost' &&
+                    `▦ CatBoost ${b.obliviousXCutsRaw.length + 1}×${b.obliviousYCutsRaw.length + 1} checkerboard${b.obliviousTruncated ? ' · capped' : ''}`}
+                  {live && ` · SHAP (${live.phiX >= 0 ? '+' : ''}${live.phiX.toFixed(2)}, ${live.phiY >= 0 ? '+' : ''}${live.phiY.toFixed(2)})`}
+                  {b.noAxisSplits && ' · off-slice splits only'}
+                </div>
+              );
+            })()}
         </div>
       )}
     </div>

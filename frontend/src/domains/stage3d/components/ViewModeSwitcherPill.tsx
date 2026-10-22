@@ -94,6 +94,10 @@ export function LayerVisibilityControls2D() {
   const showTreeCuts = useStage3DStore((s) => s.showTreeCuts);
   const showActiveLeaf = useStage3DStore((s) => s.showActiveLeaf);
   const showForestCuts = useStage3DStore((s) => s.showForestCuts);
+  const showShapVector = useStage3DStore((s) => s.showShapVector);
+  const showLeafPolygons = useStage3DStore((s) => s.showLeafPolygons);
+  const showQuantizedBins = useStage3DStore((s) => s.showQuantizedBins);
+  const showObliviousGrid = useStage3DStore((s) => s.showObliviousGrid);
   const st = useStage3DStore.getState();
 
   const row = (label: string, checked: boolean, onChange: (v: boolean) => void, hint: string) => (
@@ -135,6 +139,10 @@ export function LayerVisibilityControls2D() {
         {row('Tree cut lines', showTreeCuts, (v) => st.setShowTreeCuts(v), 'Orthogonal decision-tree partitions (Phase 45)')}
         {row('Active leaf box', showActiveLeaf, (v) => st.setShowActiveLeaf(v), 'Glowing leaf box of the active frame')}
         {row('Forest mosaic cuts', showForestCuts, (v) => st.setShowForestCuts(v), 'Top-N tree cuts superimposed (RF/ET)')}
+        {row('2D TreeSHAP vector', showShapVector, (v) => st.setShowShapVector(v), 'Native TreeSHAP push arrow (phi_x, phi_y) — XGBoost/LightGBM/CatBoost (Phase 46)')}
+        {row('Leaf polygons', showLeafPolygons, (v) => st.setShowLeafPolygons(v), 'First-tree leaf boxes + GBM residual cuts (Phase 46)')}
+        {row('Quantized bins', showQuantizedBins, (v) => st.setShowQuantizedBins(v), 'HistGBM 255-bin grid + active bin cell (Phase 46)')}
+        {row('Oblivious grid', showObliviousGrid, (v) => st.setShowObliviousGrid(v), 'CatBoost symmetric checkerboard + active cell (Phase 46)')}
       </div>
     </div>
   );

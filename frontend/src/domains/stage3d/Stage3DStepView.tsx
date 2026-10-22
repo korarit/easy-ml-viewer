@@ -171,6 +171,29 @@ export function Stage3DStepView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, datasetId, modelId, mappingId, viewMode, surfaceVisualType, projX, projY, activeFrameIndex, points.length, featureNames.join('|')]);
 
+  // Phase 46 — live boosting SHAP: refetch the per-frame push vector as the
+  // VCR scrubs, gated on the contour's boosting family (native TreeSHAP only).
+  const boostFamily = useProjectionStore((s) => s.contourData?.boosting2d?.family ?? null);
+  useEffect(() => {
+    if (!ready || !datasetId || !modelId || !mappingId || viewMode !== '2d') return;
+    if (boostFamily !== 'xgboost' && boostFamily !== 'lightgbm' && boostFamily !== 'catboost') return;
+    if (featureNames.length > 0 && (!featureNames.includes(projX) || !featureNames.includes(projY))) return;
+    const rowIndex = points[activeFrameIndex]?.original_row_index;
+    if (rowIndex === undefined || rowIndex < 0) return;
+    const timer = window.setTimeout(() => {
+      void useProjectionStore.getState().fetchBoostFrame({
+        datasetId,
+        modelId,
+        mappingId,
+        xFeature: projX,
+        yFeature: projY,
+        rowIndex,
+      });
+    }, 120);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, datasetId, modelId, mappingId, viewMode, boostFamily, projX, projY, activeFrameIndex, points.length, featureNames.join('|')]);
+
   if (!ready) {
     return (
       <section

@@ -64,6 +64,11 @@ interface Stage3DState {
   showForestCuts: boolean;
   /** Null = all stages; 0 = base prediction only (E45.6). */
   adaBoostStage: number | null;
+  /** Phase 46 — boosting heavyweight overlay visibility. */
+  showShapVector: boolean;
+  showLeafPolygons: boolean;
+  showQuantizedBins: boolean;
+  showObliviousGrid: boolean;
   isLoading: boolean;
   stageError: string | null;
   contextLost: boolean;
@@ -92,6 +97,10 @@ interface Stage3DState {
   setShowActiveLeaf: (v: boolean) => void;
   setShowForestCuts: (v: boolean) => void;
   setAdaBoostStage: (v: number | null) => void;
+  setShowShapVector: (v: boolean) => void;
+  setShowLeafPolygons: (v: boolean) => void;
+  setShowQuantizedBins: (v: boolean) => void;
+  setShowObliviousGrid: (v: boolean) => void;
   setActiveFrameIndex: (frameIdx: number) => void;
   setAxes: (xIdx: number, yIdx: number) => Promise<void>;
   setSurfaceResolution: (res: number) => Promise<void>;
@@ -169,6 +178,10 @@ export const useStage3DStore = create<Stage3DState>((set, get) => ({
   showActiveLeaf: true,
   showForestCuts: true,
   adaBoostStage: null,
+  showShapVector: true,
+  showLeafPolygons: true,
+  showQuantizedBins: true,
+  showObliviousGrid: true,
   isLoading: false,
   stageError: null,
   contextLost: false,
@@ -219,6 +232,14 @@ export const useStage3DStore = create<Stage3DState>((set, get) => ({
   setShowForestCuts: (v) => set({ showForestCuts: v }),
 
   setAdaBoostStage: (v) => set({ adaBoostStage: v }),
+
+  setShowShapVector: (v) => set({ showShapVector: v }),
+
+  setShowLeafPolygons: (v) => set({ showLeafPolygons: v }),
+
+  setShowQuantizedBins: (v) => set({ showQuantizedBins: v }),
+
+  setShowObliviousGrid: (v) => set({ showObliviousGrid: v }),
 
   setActiveFrameIndex: (frameIdx) => {
     const { points } = get();

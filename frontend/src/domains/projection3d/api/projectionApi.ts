@@ -1,6 +1,7 @@
 /** Phase 09 — typed client for POST /api/v1/projection/surface-mesh. */
 import { apiFetch } from '../../../core/api/client';
 import type {
+  BoostFrame2DPayload,
   Contour2DPayload,
   KnnFrame2DPayload,
   LodLevel,
@@ -223,6 +224,64 @@ interface Contour2DResponse {
     base_value: number | null;
     no_axis_splits: boolean;
     multi_output: boolean;
+    formula: string;
+  } | null;
+  boosting_2d: {
+    family: string;
+    algorithm: string;
+    x_feature: string;
+    y_feature: string;
+    x_feature_idx: number;
+    y_feature_idx: number;
+    n_estimators: number;
+    trees_exported: number;
+    segments: Array<{
+      axis: 'x' | 'y';
+      threshold: number;
+      node_id: number;
+      tree_index: number;
+      depth: number;
+      segment_raw: [number, number, number, number];
+      segment_world: [number, number, number, number];
+    }>;
+    segments_truncated: boolean;
+    leaves: Array<{
+      leaf_id: number;
+      tree_index: number;
+      box_raw: [number, number, number, number];
+      box_world: [number, number, number, number];
+      leaf_value: number;
+      rule: string;
+      is_active: boolean;
+    }>;
+    leaves_truncated: boolean;
+    bin_edges_x_raw: number[];
+    bin_edges_y_raw: number[];
+    bin_lines_x_world: number[];
+    bin_lines_y_world: number[];
+    active_bin: [number, number] | null;
+    oblivious_x_cuts_raw: number[];
+    oblivious_y_cuts_raw: number[];
+    oblivious_x_lines_world: number[];
+    oblivious_y_lines_world: number[];
+    oblivious_cells: Array<{
+      cell_id: number;
+      leaf_index: number;
+      bitmask: string;
+      box_raw: [number, number, number, number];
+      box_world: [number, number, number, number];
+      is_active: boolean;
+    }>;
+    oblivious_truncated: boolean;
+    oblivious_rule: string;
+    shap_vector: {
+      phi_x: number;
+      phi_y: number;
+      magnitude: number;
+      bias: number | null;
+      method: string;
+    } | null;
+    no_axis_splits: boolean;
     formula: string;
   } | null;
   computation_time_ms: number;
@@ -459,6 +518,68 @@ export async function fetchContour2D(
           formula: data.trees_2d.formula,
         }
       : null,
+    boosting2d: data.boosting_2d
+      ? {
+          family: data.boosting_2d.family,
+          algorithm: data.boosting_2d.algorithm,
+          xFeature: data.boosting_2d.x_feature,
+          yFeature: data.boosting_2d.y_feature,
+          xFeatureIdx: data.boosting_2d.x_feature_idx,
+          yFeatureIdx: data.boosting_2d.y_feature_idx,
+          nEstimators: data.boosting_2d.n_estimators,
+          treesExported: data.boosting_2d.trees_exported,
+          segments: data.boosting_2d.segments.map((s) => ({
+            axis: s.axis,
+            threshold: s.threshold,
+            nodeId: s.node_id,
+            treeIndex: s.tree_index,
+            depth: s.depth,
+            segmentRaw: s.segment_raw,
+            segmentWorld: s.segment_world,
+          })),
+          segmentsTruncated: data.boosting_2d.segments_truncated,
+          leaves: data.boosting_2d.leaves.map((l) => ({
+            leafId: l.leaf_id,
+            treeIndex: l.tree_index,
+            boxRaw: l.box_raw,
+            boxWorld: l.box_world,
+            leafValue: l.leaf_value,
+            rule: l.rule,
+            isActive: l.is_active,
+          })),
+          leavesTruncated: data.boosting_2d.leaves_truncated,
+          binEdgesXRaw: data.boosting_2d.bin_edges_x_raw,
+          binEdgesYRaw: data.boosting_2d.bin_edges_y_raw,
+          binLinesXWorld: data.boosting_2d.bin_lines_x_world,
+          binLinesYWorld: data.boosting_2d.bin_lines_y_world,
+          activeBin: data.boosting_2d.active_bin,
+          obliviousXCutsRaw: data.boosting_2d.oblivious_x_cuts_raw,
+          obliviousYCutsRaw: data.boosting_2d.oblivious_y_cuts_raw,
+          obliviousXLinesWorld: data.boosting_2d.oblivious_x_lines_world,
+          obliviousYLinesWorld: data.boosting_2d.oblivious_y_lines_world,
+          obliviousCells: data.boosting_2d.oblivious_cells.map((c) => ({
+            cellId: c.cell_id,
+            leafIndex: c.leaf_index,
+            bitmask: c.bitmask,
+            boxRaw: c.box_raw,
+            boxWorld: c.box_world,
+            isActive: c.is_active,
+          })),
+          obliviousTruncated: data.boosting_2d.oblivious_truncated,
+          obliviousRule: data.boosting_2d.oblivious_rule,
+          shapVector: data.boosting_2d.shap_vector
+            ? {
+                phiX: data.boosting_2d.shap_vector.phi_x,
+                phiY: data.boosting_2d.shap_vector.phi_y,
+                magnitude: data.boosting_2d.shap_vector.magnitude,
+                bias: data.boosting_2d.shap_vector.bias,
+                method: data.boosting_2d.shap_vector.method,
+              }
+            : null,
+          noAxisSplits: data.boosting_2d.no_axis_splits,
+          formula: data.boosting_2d.formula,
+        }
+      : null,
     computationTimeMs: data.computation_time_ms,
   };
 }
@@ -544,6 +665,69 @@ export async function fetchKnnFrame2D(
     outlier: data.outlier,
     displayCapped: data.display_capped,
     totalNeighbors: data.total_neighbors,
+    computationTimeMs: data.computation_time_ms,
+  };
+}
+
+/** Phase 46 — typed client for POST /api/v1/projection/boost-frame-2d. */
+export interface FetchBoostFrameParams {
+  datasetId: string;
+  modelId: string;
+  mappingId: string;
+  xFeature: string;
+  yFeature: string;
+  rowIndex: number;
+}
+
+interface BoostFrame2DResponse {
+  x_feature: string;
+  y_feature: string;
+  row_index: number;
+  query_world: [number, number];
+  family: string;
+  algorithm: string;
+  shap: {
+    phi_x: number;
+    phi_y: number;
+    magnitude: number;
+    bias: number | null;
+    method: string;
+  } | null;
+  computation_time_ms: number;
+}
+
+export async function fetchBoostFrame2D(
+  params: FetchBoostFrameParams,
+  signal?: AbortSignal,
+): Promise<BoostFrame2DPayload> {
+  const data = await apiFetch<BoostFrame2DResponse>('/api/v1/projection/boost-frame-2d', {
+    method: 'POST',
+    body: JSON.stringify({
+      dataset_id: params.datasetId,
+      model_id: params.modelId,
+      mapping_id: params.mappingId,
+      x_feature: params.xFeature,
+      y_feature: params.yFeature,
+      row_index: params.rowIndex,
+    }),
+    signal,
+  });
+  return {
+    xFeature: data.x_feature,
+    yFeature: data.y_feature,
+    rowIndex: data.row_index,
+    queryWorld: data.query_world,
+    family: data.family,
+    algorithm: data.algorithm,
+    shap: data.shap
+      ? {
+          phiX: data.shap.phi_x,
+          phiY: data.shap.phi_y,
+          magnitude: data.shap.magnitude,
+          bias: data.shap.bias,
+          method: data.shap.method,
+        }
+      : null,
     computationTimeMs: data.computation_time_ms,
   };
 }

@@ -260,6 +260,92 @@ export interface KnnFrame2DPayload {
   computationTimeMs: number;
 }
 
+/** Phase 46 — one boosting cut in world coords (mirrors BoostCutSegment2D). */
+export interface BoostCutSegment2D {
+  axis: 'x' | 'y';
+  threshold: number;
+  nodeId: number;
+  treeIndex: number;
+  depth: number;
+  segmentRaw: [number, number, number, number];
+  segmentWorld: [number, number, number, number];
+}
+
+/** Phase 46 — one first-tree leaf box in world coords (mirrors BoostLeafBox2D). */
+export interface BoostLeafBox2D {
+  leafId: number;
+  treeIndex: number;
+  boxRaw: [number, number, number, number];
+  /** [xmin, xmax, ymin, ymax] in world coords. */
+  boxWorld: [number, number, number, number];
+  leafValue: number;
+  rule: string;
+  isActive: boolean;
+}
+
+/** Phase 46 — native TreeSHAP push vector on the (X, Y) plane. */
+export interface BoostShap2D {
+  phiX: number;
+  phiY: number;
+  magnitude: number;
+  bias: number | null;
+  method: string;
+}
+
+/** Phase 46 — one CatBoost checkerboard cell (mirrors ObliviousCell2D). */
+export interface ObliviousCell2D {
+  cellId: number;
+  leafIndex: number;
+  bitmask: string;
+  boxRaw: [number, number, number, number];
+  /** [xmin, xmax, ymin, ymax] in world coords. */
+  boxWorld: [number, number, number, number];
+  isActive: boolean;
+}
+
+/** Phase 46 — boosting heavyweight overlay payload (mirrors Boosting2DGeometry). */
+export interface Boosting2DPayload {
+  family: 'sklearn_gbm' | 'hist_gbm' | 'xgboost' | 'lightgbm' | 'catboost' | string;
+  algorithm: string;
+  xFeature: string;
+  yFeature: string;
+  xFeatureIdx: number;
+  yFeatureIdx: number;
+  nEstimators: number;
+  treesExported: number;
+  segments: BoostCutSegment2D[];
+  segmentsTruncated: boolean;
+  leaves: BoostLeafBox2D[];
+  leavesTruncated: boolean;
+  binEdgesXRaw: number[];
+  binEdgesYRaw: number[];
+  binLinesXWorld: number[];
+  binLinesYWorld: number[];
+  activeBin: [number, number] | null;
+  obliviousXCutsRaw: number[];
+  obliviousYCutsRaw: number[];
+  obliviousXLinesWorld: number[];
+  obliviousYLinesWorld: number[];
+  obliviousCells: ObliviousCell2D[];
+  obliviousTruncated: boolean;
+  obliviousRule: string;
+  shapVector: BoostShap2D | null;
+  noAxisSplits: boolean;
+  formula: string;
+}
+
+/** Phase 46 — per-frame boosting payload (mirrors BoostFrame2DResponse). */
+export interface BoostFrame2DPayload {
+  xFeature: string;
+  yFeature: string;
+  rowIndex: number;
+  queryWorld: [number, number];
+  family: string;
+  algorithm: string;
+  shap: BoostShap2D | null;
+  computationTimeMs: number;
+}
+
 /** Phase 41 — dense 2D contour payload (mirrors Contour2DResponse). */
 export interface Contour2DPayload {
   gridResolution: number;
@@ -285,6 +371,8 @@ export interface Contour2DPayload {
   probabilistic2d: Probabilistic2DPayload | null;
   /** Phase 45 — tree cuts / leaf boxes / forest cuts / adaboost stages; null when N/A. */
   trees2d: Trees2DPayload | null;
+  /** Phase 46 — GBM cuts / hist bins / xgb+lgbm polygons+SHAP / catboost checkerboard; null when N/A. */
+  boosting2d: Boosting2DPayload | null;
   computationTimeMs: number;
 }
 
