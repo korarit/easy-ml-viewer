@@ -44,6 +44,8 @@ class MlvPackageEntity(BaseModel):
     header: MlvHeaderSection
     static_world: MlvStaticWorldSection
     frames_track: MlvFramesTrackSection
+    # Phase 48 — optional normalized 2D contour cache (None on legacy files).
+    contour_2d_cache: dict | None = None
     model_config = {"arbitrary_types_allowed": True}
 
 

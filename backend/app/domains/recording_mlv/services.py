@@ -69,6 +69,7 @@ def assemble_payload(
     static_world: dict[str, Any],
     frames_columns: dict[str, np.ndarray],
     top_k_contribs: np.ndarray | None = None,
+    contour_2d_cache: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Assemble the msgpack-ready payload dict (ndarrays handled by the codec)."""
     contribs = (
@@ -76,13 +77,17 @@ def assemble_payload(
         if top_k_contribs is not None and np.asarray(top_k_contribs).size
         else np.zeros((0, 0), dtype=np.float32)
     )
-    return {
+    payload: dict[str, Any] = {
         "schema_version": header.schema_version,
         "header": header.model_dump(mode="json"),
         "static_world": dict(static_world),
         "frames_track": dict(frames_columns),
         "top_k_contribs": contribs,
     }
+    # Phase 48 — optional 2D contour block (absent on legacy / 3D-only bakes).
+    if isinstance(contour_2d_cache, dict) and contour_2d_cache:
+        payload["contour_2d_cache"] = dict(contour_2d_cache)
+    return payload
 
 
 def split_payload(payload: dict[str, Any]) -> MlvPackageEntity:
@@ -117,7 +122,21 @@ def split_payload(payload: dict[str, Any]) -> MlvPackageEntity:
         predictions=[float(v) for v in preds.tolist()],
         confidences=[float(v) for v in confs.tolist()],
     )
-    return MlvPackageEntity(header=header, static_world=static_world, frames_track=frames)
+    # Phase 48 — keep the raw 2D cache block (if any) on the typed entity so
+    # bake/load/rebake round-trips preserve instant-2D without recompute.
+    contour_block = payload.get("contour_2d_cache")
+    contour_out: dict[str, Any] | None = None
+    if isinstance(contour_block, dict) and contour_block:
+        try:
+            from app.domains.recording_mlv.contour_2d_baker import restore_contour_2d_cache
+
+            restored = restore_contour_2d_cache(payload)
+            contour_out = restored if restored is not None else dict(contour_block)
+        except Exception:
+            contour_out = dict(contour_block)
+    return MlvPackageEntity(
+        header=header, static_world=static_world, frames_track=frames, contour_2d_cache=contour_out
+    )
 
 
 def estimate_compressed_bytes(n_frames: int, surface_resolution: int, include_explainability: bool) -> int:

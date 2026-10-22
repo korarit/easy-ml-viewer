@@ -69,6 +69,9 @@ class MlvBakeRequest(BaseModel):
     include_explainability: bool = True
     include_bookmarks: bool = True
     compression_level: int = Field(default=3, ge=1, le=19)
+    # Phase 48 — optional raw Contour2DResponse JSON; baked into
+    # ``contour_2d_cache`` for instant 2D (<0.1 s, no recompute on load).
+    contour_2d: dict[str, Any] | None = Field(default=None)
 
 
 class MlvRebakeBookmarksRequest(BaseModel):
@@ -259,7 +262,16 @@ class MlvRecordingOrchestrator:
         )
         frames_columns = build_columnar_frames(row_indices, positions, preds, confidences)
         top_k = np.zeros((n, min(10, n_features)), dtype=np.float32) if req.include_explainability and n else None
-        payload = assemble_payload(header, static_world, frames_columns, top_k)
+        # Phase 48 — optional 2D contour block (fail-safe: never breaks 3D bake).
+        contour_cache: dict[str, Any] | None = None
+        if isinstance(req.contour_2d, dict) and req.contour_2d:
+            try:
+                from app.domains.recording_mlv.contour_2d_baker import bake_contour_2d_cache
+
+                contour_cache = bake_contour_2d_cache(req.contour_2d)
+            except Exception:
+                contour_cache = None
+        payload = assemble_payload(header, static_world, frames_columns, top_k, contour_cache)
         try:
             blob = encode_mlv_package(payload, compression_level=int(req.compression_level))
         finally:
@@ -297,11 +309,13 @@ class MlvRecordingOrchestrator:
             is_prebaked_replay=True,
         )
         ft = payload.get("frames_track", {})
+        contour_block = payload.get("contour_2d_cache")
         _remember_prebaked(
             sid,
             {
                 "entity": entity,
                 "package": package,
+                "contour_2d_cache": dict(contour_block) if isinstance(contour_block, dict) else None,
                 "raw_bytes": bytes(file_bytes),
                 "positions_world": np.asarray(
                     ft.get("positions_world", np.zeros((package.header.total_frames, 3), dtype=np.float32)),
@@ -344,6 +358,7 @@ class MlvRecordingOrchestrator:
             blob.get("top_k_contribs", np.zeros((0, 0), dtype=np.float32)), dtype=np.float32
         )
         stored_top_k = stored_top_k if stored_top_k.size else None
+        stored_contour = blob.get("contour_2d_cache")
         payload = assemble_payload(
             package.header,
             {
@@ -365,6 +380,7 @@ class MlvRecordingOrchestrator:
                 np.asarray(package.frames_track.confidences, dtype=np.float32),
             ),
             stored_top_k,
+            dict(stored_contour) if isinstance(stored_contour, dict) else None,
         )
         try:
             out = encode_mlv_package(payload)
@@ -388,4 +404,22 @@ def header_to_response(header: MlvHeaderSection) -> dict[str, Any]:
 
 
 def prebaked_to_response(entity: PrebakedMlvSessionEntity) -> dict[str, Any]:
-    return entity.model_dump(mode="json")
+    body = entity.model_dump(mode="json")
+    # Phase 48 — instant-2D summary for the load path (legacy files → zeros).
+    try:
+        contour = _PREBAKED.get(entity.session_id, {}).get("contour_2d_cache")
+        if isinstance(contour, dict) and contour:
+            polys = contour.get("boundary_polylines", []) or []
+            body["contour_2d_summary"] = {
+                "has_contour_2d": True,
+                "x_feature": str(contour.get("x_feature", "")),
+                "y_feature": str(contour.get("y_feature", "")),
+                "grid_resolution": int(contour.get("grid_resolution", 0) or 0),
+                "n_boundary_polylines": len(polys) if isinstance(polys, list) else 0,
+                "boundary_truncated": bool(contour.get("boundary_truncated", False)),
+            }
+        else:
+            body["contour_2d_summary"] = {"has_contour_2d": False}
+    except Exception:
+        body["contour_2d_summary"] = {"has_contour_2d": False}
+    return body

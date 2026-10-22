@@ -69,6 +69,71 @@ async def get_mlv_info(
     return prebaked_to_response(MlvRecordingOrchestrator.get_prebaked(session_id))
 
 
+@router.get("/{session_id}/contour-2d", summary="Phase 48: instant 2D contour cache from a loaded .mlv")
+async def get_mlv_contour_2d(session_id: str) -> dict[str, Any]:
+    """Return the baked ``contour_2d_cache`` block (404 when legacy/absent).
+
+    The heatmap ships as ``heatmap_quantized`` (uint8) so the response stays
+    under the 150 KB DTO budget; clients decode with
+    ``min + (q/255) * (max-min)`` — the same rule as the live contour path.
+    """
+    import numpy as np
+
+    from app.application.mlv_recording_orchestrator import _PREBAKED
+
+    try:
+        blob = _PREBAKED[session_id]
+    except KeyError:
+        from app.core.exceptions import DomainException as _DE
+
+        raise _DE(
+            code="MLV_SESSION_NOT_FOUND",
+            message=f"Prebaked .mlv session '{session_id}' not found — POST /api/v1/recordings/load first",
+            http_status=404,
+        ) from None
+    block = blob.get("contour_2d_cache")
+    if not isinstance(block, dict) or not block:
+        from app.core.exceptions import DomainException as _DE
+
+        raise _DE(
+            code="MLV_NO_CONTOUR_2D",
+            message="This .mlv has no baked 2D contour (legacy v1.x) — recompute via /projection/contour-2d",
+            http_status=404,
+        )
+    heat = np.asarray(block.get("heatmap_float32"), dtype=np.float32)
+    h_min = float(block.get("heatmap_min", 0.0))
+    h_max = float(block.get("heatmap_max", 1.0))
+    span = float(h_max - h_min)
+    if heat.size and span > 1e-12:
+        norm = np.clip((heat.ravel().astype(np.float64) - h_min) / span, 0.0, 1.0)
+        quantized = (np.rint(norm * 255.0).astype(np.uint8)).tolist()
+    else:
+        quantized = [128] * int(heat.size)
+    # Decision polylines → live-contour segment shape for renderer reuse.
+    segments: list[list[float]] = []
+    for poly in (block.get("boundary_polylines", []) or []):
+        pts = poly.get("points", []) if isinstance(poly, dict) else []
+        if isinstance(pts, list) and len(pts) >= 2:
+            try:
+                (x1, y1), (x2, y2) = (float(pts[0][0]), float(pts[0][1])), (float(pts[1][0]), float(pts[1][1]))
+                segments.append([x1, y1, x2, y2])
+            except (TypeError, ValueError, IndexError):
+                continue
+    return {
+        "session_id": session_id,
+        "x_feature": str(block.get("x_feature", "")),
+        "y_feature": str(block.get("y_feature", "")),
+        "grid_resolution": int(block.get("grid_resolution", 0) or 0),
+        "prediction_task": str(block.get("prediction_task", "classification")),
+        "heatmap_min": h_min,
+        "heatmap_max": h_max,
+        "heatmap_quantized": quantized,
+        "decision_segments": segments,
+        "boundary_truncated": bool(block.get("boundary_truncated", False)),
+        "model_specific_2d": block.get("model_specific_2d"),
+    }
+
+
 @router.put("/{session_id}/bookmarks", summary="Phase 15: update bookmarks + re-bake .mlv")
 async def rebake_mlv_bookmarks(
     session_id: str,
