@@ -18,6 +18,31 @@ class ModelSchema(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
 
+def _is_native_booster(obj: Any) -> bool:
+    """Duck-typed check for a native ``xgb.Booster`` (no hard xgboost import)."""
+    return callable(getattr(obj, "num_boosted_rounds", None)) and callable(
+        getattr(obj, "save_config", None)
+    )
+
+
+def _booster_objective(obj: Any) -> tuple[str, int]:
+    """Return ``(objective_name, num_class)`` parsed from a Booster config."""
+    try:
+        import json  # noqa: PLC0415
+
+        cfg = json.loads(obj.save_config())
+        learner = cfg.get("learner", {})
+        objective = str(learner.get("objective", {}).get("name", ""))
+        params = learner.get("learner_model_param", {})
+        try:
+            num_class = int(params.get("num_class", 0) or 0)
+        except (TypeError, ValueError):
+            num_class = 0
+        return objective, num_class
+    except Exception:
+        return "", 0
+
+
 def _safe_n_features(estimator: Any) -> int | None:
     for attr in ("n_features_in_", "n_features_to_select_"):
         value = getattr(estimator, attr, None)
@@ -72,6 +97,18 @@ class UniversalSchemaDetector:
     @staticmethod
     def validate_is_fitted(estimator: Any) -> None:
         """Raise MODEL_NOT_FITTED when the estimator never saw .fit()."""
+        if _is_native_booster(estimator):
+            try:
+                n_rounds = int(estimator.num_boosted_rounds())
+            except Exception:
+                n_rounds = 0
+            if n_rounds < 1:
+                raise ModelLoadError(
+                    f"Model '{type(estimator).__name__}' holds no boosted rounds",
+                    details={"estimator_class": type(estimator).__name__},
+                    code="MODEL_NOT_FITTED",
+                )
+            return
         try:
             from sklearn.exceptions import NotFittedError  # noqa: PLC0415
             from sklearn.utils.validation import check_is_fitted  # noqa: PLC0415
@@ -99,6 +136,8 @@ class UniversalSchemaDetector:
     @staticmethod
     def extract_schema(estimator: Any) -> ModelSchema:
         """Build the ordered feature list (embedded names or placeholders)."""
+        if _is_native_booster(estimator):
+            return UniversalSchemaDetector._extract_booster_schema(estimator)
         names_attr = getattr(estimator, "feature_names_in_", None)
         n = _safe_n_features(estimator)
         if names_attr is not None:
@@ -130,4 +169,47 @@ class UniversalSchemaDetector:
                 classes = [v.item() if hasattr(v, "item") else v for v in list(raw_classes)]
             except TypeError:
                 classes = None
+        return ModelSchema(n_features_in=n, features=features, classes=classes)
+
+    @staticmethod
+    def _extract_booster_schema(booster: Any) -> ModelSchema:
+        """Schema for a native ``xgb.Booster`` (no sklearn attributes).
+
+        Feature count comes from ``num_features()`` with the embedded
+        ``feature_names`` (or ``feature_{i}`` placeholders); class labels
+        are inferred from the objective (binary ``[0, 1]``, multiclass
+        ``[0..C-1]``, ``None`` for regression/ranking).
+        """
+        try:
+            n = int(booster.num_features())
+        except Exception:
+            n = 0
+        if n < 1:
+            raise ModelLoadError(
+                f"Cannot determine input dimensionality of '{type(booster).__name__}'",
+                details={"estimator_class": type(booster).__name__},
+                code="SCHEMA_EXTRACTION_FAILED",
+            )
+        embedded = getattr(booster, "feature_names", None)
+        if embedded is not None and len(list(embedded)) == n:
+            names = [str(v) for v in list(embedded)]
+            auto = False
+        else:
+            names = [f"feature_{i}" for i in range(n)]
+            auto = True
+        objective, num_class = _booster_objective(booster)
+        classes: list[str | int | float] | None = None
+        if objective.startswith("binary:"):
+            classes = [0, 1]
+        elif objective.startswith("multi:") and num_class > 1:
+            classes = list(range(num_class))
+        features = [
+            FeatureRequirement(
+                index=i,
+                name=name,
+                expected_dtype="float32",
+                is_auto_generated_name=auto,
+            )
+            for i, name in enumerate(names)
+        ]
         return ModelSchema(n_features_in=n, features=features, classes=classes)

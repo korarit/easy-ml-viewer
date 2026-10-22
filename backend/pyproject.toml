@@ -17,6 +17,7 @@ dependencies = [
   "charset-normalizer>=3.3.0",
   "scikit-learn>=1.5.0",
   "joblib>=1.4.0",
+  "xgboost>=2.0.0",
   "msgpack>=1.0",
   "zstandard>=0.22",
 ]

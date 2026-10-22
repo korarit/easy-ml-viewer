@@ -51,7 +51,13 @@ class JoblibModelRepository:
         self._max_models = max(1, max_models_in_ram)
         self._models: OrderedDict[str, Any] = OrderedDict()
 
+    # Phase 33: native XGBoost booster formats bypass joblib entirely.
+    _XGB_NATIVE_SUFFIXES = frozenset({".json", ".ubj", ".model", ".xgb"})
+
     def load_and_cache(self, model_id: str, file_path: str | Path) -> tuple[Any, list[str]]:
+        suffix = Path(file_path).suffix.lower()
+        if suffix in self._XGB_NATIVE_SUFFIXES:
+            return self._load_native_booster(model_id, Path(file_path))
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             obj = joblib.load(file_path, mmap_mode="r")
@@ -64,6 +70,36 @@ class JoblibModelRepository:
             del evicted
         gc.collect()
         return obj, load_warnings
+
+    def _load_native_booster(self, model_id: str, file_path: Path) -> tuple[Any, list[str]]:
+        """Load a native ``xgb.Booster`` artifact (``.json`` / ``.ubj`` / ``.model``)."""
+        try:
+            import xgboost as xgb  # noqa: PLC0415
+        except ImportError as exc:
+            raise DomainException(
+                code="XGBOOST_NOT_INSTALLED",
+                message="xgboost is required to load native booster files (.json/.ubj/.model)",
+                http_status=415,
+            ) from exc
+        try:
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                booster = xgb.Booster()
+                booster.load_model(file_path)
+        except Exception as exc:
+            raise DomainException(
+                code="NATIVE_BOOSTER_LOAD_FAILED",
+                message=f"File '{file_path.name}' is not a loadable XGBoost booster: {exc}",
+                http_status=415,
+            ) from exc
+        load_warnings = [f"{w.category.__name__}: {w.message}" for w in caught]
+        self._models[model_id] = booster
+        self._models.move_to_end(model_id)
+        while len(self._models) > self._max_models:
+            _, evicted = self._models.popitem(last=False)
+            del evicted
+        gc.collect()
+        return booster, load_warnings
 
     def get(self, model_id: str) -> Any:
         try:

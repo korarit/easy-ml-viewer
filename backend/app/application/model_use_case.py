@@ -31,13 +31,15 @@ from app.domains.model_engine.adapters.probabilistic import discrete_nb as _disc
 from app.domains.model_engine.adapters.probabilistic import discriminant as _discriminant_adapter  # noqa: F401
 from app.domains.model_engine.adapters.boosting import hist_gbm as _hist_gbm_adapter  # noqa: F401
 from app.domains.model_engine.adapters.boosting import sklearn_gbm as _gbm_adapter  # noqa: F401
+from app.domains.model_engine.adapters.boosting import xgb_adapter as _xgb_adapter  # noqa: F401
 from app.domains.model_engine.adapters.trees import decision_tree as _decision_tree_adapter  # noqa: F401
 from app.domains.model_engine.adapters.trees import adaboost as _adaboost_adapter  # noqa: F401
 from app.domains.model_engine.adapters.trees import extra_trees as _extra_trees_adapter  # noqa: F401
 from app.domains.model_engine.adapters.trees import random_forest as _random_forest_adapter  # noqa: F401
 
-_ALLOWED_MODEL_SUFFIXES = {".joblib", ".pkl", ".pickle"}
-_ALLOWED_SAMPLE_SUFFIXES = {".joblib", ".pkl", ".pickle"}
+# Phase 33: native XGBoost booster formats load straight into xgb.Booster.
+_ALLOWED_MODEL_SUFFIXES = {".joblib", ".pkl", ".pickle", ".json", ".ubj", ".model", ".xgb"}
+_ALLOWED_SAMPLE_SUFFIXES = {".joblib", ".pkl", ".pickle", ".json", ".ubj", ".model", ".xgb"}
 
 
 def _sanitize_hyperparameters(raw: dict[str, Any]) -> dict[str, Any]:
@@ -92,7 +94,7 @@ class ModelIngestUseCase:
         suffix = Path(filename).suffix.lower()
         if suffix not in _ALLOWED_MODEL_SUFFIXES:
             raise ModelLoadError(
-                f"Unsupported model format '{suffix}' (allowed: .joblib, .pkl, .pickle)",
+                f"Unsupported model format '{suffix}' (allowed: {sorted(_ALLOWED_MODEL_SUFFIXES)})",
                 details={"suffix": suffix},
                 code="UNSUPPORTED_MODEL_FORMAT",
             )
