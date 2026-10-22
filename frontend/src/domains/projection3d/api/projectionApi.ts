@@ -179,6 +179,52 @@ interface Contour2DResponse {
     } | null;
     formula: string;
   } | null;
+  trees_2d: {
+    family: string;
+    algorithm: string;
+    x_feature: string;
+    y_feature: string;
+    x_feature_idx: number;
+    y_feature_idx: number;
+    n_estimators: number;
+    trees_exported: number;
+    segments: Array<{
+      axis: 'x' | 'y';
+      threshold: number;
+      node_id: number;
+      tree_index: number;
+      depth: number;
+      segment_raw: [number, number, number, number];
+      segment_world: [number, number, number, number];
+    }>;
+    segments_truncated: boolean;
+    leaves: Array<{
+      leaf_id: number;
+      tree_index: number;
+      box_raw: [number, number, number, number];
+      box_world: [number, number, number, number];
+      prediction: string | number | null;
+      samples: number;
+      impurity: number;
+      rule: string;
+      is_active: boolean;
+    }>;
+    leaves_truncated: boolean;
+    stages: Array<{
+      stage: number;
+      feature_index: number;
+      axis: 'x' | 'y' | 'off';
+      threshold: number | null;
+      weight: number;
+      tree_depth: number;
+      segment_world: [number, number, number, number] | null;
+    }>;
+    stages_truncated: boolean;
+    base_value: number | null;
+    no_axis_splits: boolean;
+    multi_output: boolean;
+    formula: string;
+  } | null;
   computation_time_ms: number;
 }
 
@@ -363,6 +409,54 @@ export async function fetchContour2D(
               }
             : null,
           formula: data.probabilistic_2d.formula,
+        }
+      : null,
+    trees2d: data.trees_2d
+      ? {
+          family: data.trees_2d.family,
+          algorithm: data.trees_2d.algorithm,
+          xFeature: data.trees_2d.x_feature,
+          yFeature: data.trees_2d.y_feature,
+          xFeatureIdx: data.trees_2d.x_feature_idx,
+          yFeatureIdx: data.trees_2d.y_feature_idx,
+          nEstimators: data.trees_2d.n_estimators,
+          treesExported: data.trees_2d.trees_exported,
+          segments: data.trees_2d.segments.map((s) => ({
+            axis: s.axis,
+            threshold: s.threshold,
+            nodeId: s.node_id,
+            treeIndex: s.tree_index,
+            depth: s.depth,
+            segmentRaw: s.segment_raw,
+            segmentWorld: s.segment_world,
+          })),
+          segmentsTruncated: data.trees_2d.segments_truncated,
+          leaves: data.trees_2d.leaves.map((l) => ({
+            leafId: l.leaf_id,
+            treeIndex: l.tree_index,
+            boxRaw: l.box_raw,
+            boxWorld: l.box_world,
+            prediction: l.prediction,
+            samples: l.samples,
+            impurity: l.impurity,
+            rule: l.rule,
+            isActive: l.is_active,
+          })),
+          leavesTruncated: data.trees_2d.leaves_truncated,
+          stages: data.trees_2d.stages.map((st) => ({
+            stage: st.stage,
+            featureIndex: st.feature_index,
+            axis: st.axis,
+            threshold: st.threshold,
+            weight: st.weight,
+            treeDepth: st.tree_depth,
+            segmentWorld: st.segment_world,
+          })),
+          stagesTruncated: data.trees_2d.stages_truncated,
+          baseValue: data.trees_2d.base_value,
+          noAxisSplits: data.trees_2d.no_axis_splits,
+          multiOutput: data.trees_2d.multi_output,
+          formula: data.trees_2d.formula,
         }
       : null,
     computationTimeMs: data.computation_time_ms,

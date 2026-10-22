@@ -7,6 +7,7 @@ import { DecisionBoundaryContour2D, wy } from './DecisionBoundaryContour2D';
 import { LinearOverlays2D } from './surfaces_2d/LinearOverlays2D';
 import { DistanceOverlays2D } from './surfaces_2d/DistanceOverlays2D';
 import { ProbabilisticOverlays2D } from './surfaces_2d/ProbabilisticOverlays2D';
+import { TreesOverlays2D } from './surfaces_2d/TreesOverlays2D';
 import { ActiveDataPointReticle2D } from './ActiveDataPointReticle2D';
 import { WhatIfDisplacementVector2D } from './WhatIfDisplacementVector2D';
 
@@ -38,6 +39,7 @@ export function Stage2DCanvas() {
   const colormap = useProjectionStore((s) => s.colormap);
   const points = useStage3DStore((s) => s.points);
   const activeFrameIndex = useStage3DStore((s) => s.activeFrameIndex);
+  const adaBoostStage = useStage3DStore((s) => s.adaBoostStage);
   const showHeatmap = useStage3DStore((s) => s.showHeatmap);
   const showRulers = useStage3DStore((s) => s.showRulers);
 
@@ -226,6 +228,8 @@ export function Stage2DCanvas() {
               <DistanceOverlays2D contourData={contourData} knnFrame={knnFrame} />
               {/* Phase 44 — probability ellipses, LDA line / QDA conic, NB steps. */}
               <ProbabilisticOverlays2D contourData={contourData} />
+              {/* Phase 45 — tree cuts, leaf boxes, forest mosaic, adaboost cascade. */}
+              <TreesOverlays2D contourData={contourData} />
               {/* Trajectory points */}
               <g aria-label="Trajectory points">
                 {points.map((p, f) => {
@@ -341,6 +345,49 @@ export function Stage2DCanvas() {
               {contourData.linear2d.l1Ratio !== null && ` · ρ=${contourData.linear2d.l1Ratio.toFixed(2)}`}
             </div>
           )}
+          {/* Phase 45 — tree/ensemble badge + AdaBoost cascade slider. */}
+          {contourData.trees2d &&
+            (() => {
+              const t = contourData.trees2d!;
+              const effStage =
+                adaBoostStage === null ? t.nEstimators : Math.max(0, Math.min(adaBoostStage, t.nEstimators));
+              const onSlice = t.stages.filter((s) => s.axis !== 'off').length;
+              return (
+                <div
+                  className="font-mono-tabular pointer-events-auto absolute top-1 left-1 max-w-[70%] rounded px-2 py-1 text-[11px]"
+                  style={{ background: 'rgba(10,15,22,0.72)', color: 'var(--text-primary)' }}
+                  title={t.formula}
+                >
+                  {t.family === 'decision_tree' &&
+                    `▦ Tree ${t.segments.length} cuts · ${t.leaves.length} leaves${t.segmentsTruncated || t.leavesTruncated ? ' · capped' : ''}`}
+                  {(t.family === 'random_forest' || t.family === 'extra_trees') &&
+                    `▦ ${t.family === 'random_forest' ? 'RF' : 'ET'} top-${t.treesExported}/${t.nEstimators} cuts${t.segmentsTruncated ? ' · capped' : ''}`}
+                  {t.family === 'adaboost' && (
+                    <span className="inline-flex items-center gap-2">
+                      <span title={t.formula}>
+                        {`◈ Boost T=${effStage}/${t.nEstimators}${effStage === 0 ? ` · base P=${t.baseValue ?? 0.5}` : ''}${onSlice < t.stages.length ? ` · ${onSlice} on-slice` : ''}${t.stagesTruncated ? ' · capped' : ''}`}
+                      </span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={t.nEstimators}
+                        value={effStage}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          useStage3DStore.getState().setAdaBoostStage(v >= t.nEstimators ? null : v);
+                        }}
+                        aria-label="Weak learner stage"
+                        title="Drag to replay the staged cascade (T=0 shows the base prediction)"
+                        className="h-1 w-24 cursor-pointer"
+                      />
+                    </span>
+                  )}
+                  {t.noAxisSplits &&
+                    ' · Splits occur on non-visualized axes; uniform prediction on this slice'}
+                  {t.multiOutput && ' · output 0'}
+                </div>
+              );
+            })()}
           {/* Phase 44 — probabilistic badges (conic type / variant / truncation). */}
           {contourData.probabilistic2d && (
             <div

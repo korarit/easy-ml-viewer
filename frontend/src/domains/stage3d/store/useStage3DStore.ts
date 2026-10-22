@@ -58,6 +58,12 @@ interface Stage3DState {
   showProbEllipses: boolean;
   showProbCentroids: boolean;
   showConicBoundary: boolean;
+  /** Phase 45 — tree & ensemble overlay visibility + cascade stage. */
+  showTreeCuts: boolean;
+  showActiveLeaf: boolean;
+  showForestCuts: boolean;
+  /** Null = all stages; 0 = base prediction only (E45.6). */
+  adaBoostStage: number | null;
   isLoading: boolean;
   stageError: string | null;
   contextLost: boolean;
@@ -82,6 +88,10 @@ interface Stage3DState {
   setShowProbEllipses: (v: boolean) => void;
   setShowProbCentroids: (v: boolean) => void;
   setShowConicBoundary: (v: boolean) => void;
+  setShowTreeCuts: (v: boolean) => void;
+  setShowActiveLeaf: (v: boolean) => void;
+  setShowForestCuts: (v: boolean) => void;
+  setAdaBoostStage: (v: number | null) => void;
   setActiveFrameIndex: (frameIdx: number) => void;
   setAxes: (xIdx: number, yIdx: number) => Promise<void>;
   setSurfaceResolution: (res: number) => Promise<void>;
@@ -155,6 +165,10 @@ export const useStage3DStore = create<Stage3DState>((set, get) => ({
   showProbEllipses: true,
   showProbCentroids: true,
   showConicBoundary: true,
+  showTreeCuts: true,
+  showActiveLeaf: true,
+  showForestCuts: true,
+  adaBoostStage: null,
   isLoading: false,
   stageError: null,
   contextLost: false,
@@ -197,6 +211,14 @@ export const useStage3DStore = create<Stage3DState>((set, get) => ({
   setShowProbCentroids: (v) => set({ showProbCentroids: v }),
 
   setShowConicBoundary: (v) => set({ showConicBoundary: v }),
+
+  setShowTreeCuts: (v) => set({ showTreeCuts: v }),
+
+  setShowActiveLeaf: (v) => set({ showActiveLeaf: v }),
+
+  setShowForestCuts: (v) => set({ showForestCuts: v }),
+
+  setAdaBoostStage: (v) => set({ adaBoostStage: v }),
 
   setActiveFrameIndex: (frameIdx) => {
     const { points } = get();

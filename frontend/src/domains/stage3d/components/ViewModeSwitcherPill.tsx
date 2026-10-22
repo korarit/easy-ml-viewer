@@ -91,6 +91,9 @@ export function LayerVisibilityControls2D() {
   const showProbEllipses = useStage3DStore((s) => s.showProbEllipses);
   const showProbCentroids = useStage3DStore((s) => s.showProbCentroids);
   const showConicBoundary = useStage3DStore((s) => s.showConicBoundary);
+  const showTreeCuts = useStage3DStore((s) => s.showTreeCuts);
+  const showActiveLeaf = useStage3DStore((s) => s.showActiveLeaf);
+  const showForestCuts = useStage3DStore((s) => s.showForestCuts);
   const st = useStage3DStore.getState();
 
   const row = (label: string, checked: boolean, onChange: (v: boolean) => void, hint: string) => (
@@ -129,6 +132,9 @@ export function LayerVisibilityControls2D() {
         {row('Class ellipses (1–3σ)', showProbEllipses, (v) => st.setShowProbEllipses(v), 'GNB/LDA/QDA equiprobability rings (Phase 44)')}
         {row('Centroid crosshairs', showProbCentroids, (v) => st.setShowProbCentroids(v), 'Per-class mean markers (μx, μy)')}
         {row('LDA/QDA boundary', showConicBoundary, (v) => st.setShowConicBoundary(v), 'Exact LDA line + QDA conic curve')}
+        {row('Tree cut lines', showTreeCuts, (v) => st.setShowTreeCuts(v), 'Orthogonal decision-tree partitions (Phase 45)')}
+        {row('Active leaf box', showActiveLeaf, (v) => st.setShowActiveLeaf(v), 'Glowing leaf box of the active frame')}
+        {row('Forest mosaic cuts', showForestCuts, (v) => st.setShowForestCuts(v), 'Top-N tree cuts superimposed (RF/ET)')}
       </div>
     </div>
   );

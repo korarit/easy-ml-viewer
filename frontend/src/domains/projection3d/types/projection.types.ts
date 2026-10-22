@@ -129,6 +129,64 @@ export interface Probabilistic2DPayload {
   formula: string;
 }
 
+/** Phase 45 — one axis-aligned cut in world coords (mirrors TreeCutSegment2D). */
+export interface TreeCutSegment2D {
+  axis: 'x' | 'y';
+  threshold: number;
+  nodeId: number;
+  treeIndex: number;
+  depth: number;
+  segmentRaw: [number, number, number, number];
+  segmentWorld: [number, number, number, number];
+}
+
+/** Phase 45 — one leaf bounding box in world coords (mirrors LeafBox2D). */
+export interface LeafBox2D {
+  leafId: number;
+  treeIndex: number;
+  boxRaw: [number, number, number, number];
+  /** [xmin, xmax, ymin, ymax] in world coords. */
+  boxWorld: [number, number, number, number];
+  prediction: string | number | null;
+  samples: number;
+  impurity: number;
+  rule: string;
+  isActive: boolean;
+}
+
+/** Phase 45 — one weak learner for the cascade slider (mirrors AdaBoostStage2D). */
+export interface AdaBoostStage2D {
+  stage: number;
+  featureIndex: number;
+  axis: 'x' | 'y' | 'off';
+  threshold: number | null;
+  weight: number;
+  treeDepth: number;
+  segmentWorld: [number, number, number, number] | null;
+}
+
+/** Phase 45 — tree & ensemble overlay payload (mirrors Trees2DGeometry). */
+export interface Trees2DPayload {
+  family: 'decision_tree' | 'random_forest' | 'extra_trees' | 'adaboost' | string;
+  algorithm: string;
+  xFeature: string;
+  yFeature: string;
+  xFeatureIdx: number;
+  yFeatureIdx: number;
+  nEstimators: number;
+  treesExported: number;
+  segments: TreeCutSegment2D[];
+  segmentsTruncated: boolean;
+  leaves: LeafBox2D[];
+  leavesTruncated: boolean;
+  stages: AdaBoostStage2D[];
+  stagesTruncated: boolean;
+  baseValue: number | null;
+  noAxisSplits: boolean;
+  multiOutput: boolean;
+  formula: string;
+}
+
 /** Phase 43 — one support-vector halo (mirrors SvmHalo2D + world coords). */
 export interface SvmHalo2D {
   trainIndex: number;
@@ -225,6 +283,8 @@ export interface Contour2DPayload {
   knn2d: KnnStatic2D | null;
   /** Phase 44 — probabilistic ellipses / LDA line / QDA conic; null when N/A. */
   probabilistic2d: Probabilistic2DPayload | null;
+  /** Phase 45 — tree cuts / leaf boxes / forest cuts / adaboost stages; null when N/A. */
+  trees2d: Trees2DPayload | null;
   computationTimeMs: number;
 }
 
