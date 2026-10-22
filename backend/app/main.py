@@ -18,7 +18,20 @@ from app.presentation.exception_handlers import register_exception_handlers  # n
 log = get_logger("easy_ml_viewer")
 
 
+def _startup_cache_sweep() -> None:
+    """Phase 40: evict `.cache` temp files older than 24h / over 1 GB quota."""
+    try:
+        from app.infrastructure.filesystem.cache_manager import CacheManager
+
+        freed_mb, removed = CacheManager().sweep_stale_cache()
+        if removed:
+            log.info("Cache sweep: removed %d stale files (%.1f MB)", removed, freed_mb)
+    except Exception as exc:  # never block server startup on cache I/O
+        log.warning("Cache sweep skipped: %s", exc)
+
+
 def create_app() -> FastAPI:
+    _startup_cache_sweep()
     app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION)
     app.add_middleware(
         CORSMiddleware,
