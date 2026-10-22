@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, Depends
 
 from app.application.projection_orchestrator import (
+    ProjectionBoostFrameRequest,
     ProjectionContourRequest,
     ProjectionKnnFrameRequest,
     ProjectionOrchestrator,
@@ -44,4 +45,13 @@ async def compute_knn_frame_2d(
     orchestrator: ProjectionOrchestrator = Depends(get_projection_orchestrator),
 ) -> dict[str, Any]:
     entity = await orchestrator.build_knn_frame(body)
+    return entity.model_dump(mode="json")
+
+
+@router.post("/boost-frame-2d", summary="Phase 46: per-frame boosting SHAP push vector for the 2D viewport")
+async def compute_boost_frame_2d(
+    body: ProjectionBoostFrameRequest,
+    orchestrator: ProjectionOrchestrator = Depends(get_projection_orchestrator),
+) -> dict[str, Any]:
+    entity = await orchestrator.build_boost_frame(body)
     return entity.model_dump(mode="json")

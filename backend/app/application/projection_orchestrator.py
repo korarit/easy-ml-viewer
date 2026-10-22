@@ -90,6 +90,17 @@ class ProjectionKnnFrameRequest(BaseModel):
     row_index: int = Field(ge=0, description="Dataset row serving as the radar query")
 
 
+class ProjectionBoostFrameRequest(BaseModel):
+    """Phase 46 — per-frame boosting SHAP push vector for the 2D viewport."""
+
+    dataset_id: str = Field(min_length=1)
+    model_id: str = Field(min_length=1)
+    mapping_id: str = Field(min_length=1)
+    x_feature: str = Field(min_length=1)
+    y_feature: str = Field(min_length=1)
+    row_index: int = Field(ge=0, description="Dataset row serving as the SHAP query")
+
+
 class KnnFrameNeighbor(BaseModel):
     train_index: int = 0
     x_world: float = 0.0
@@ -120,6 +131,29 @@ class KnnFrame2DResponse(BaseModel):
     outlier: bool = False
     display_capped: bool = False
     total_neighbors: int = 0
+    computation_time_ms: float = 0.0
+
+
+class BoostFrameShap(BaseModel):
+    """Native TreeSHAP push vector on the (X, Y) plane (rounded DTO floats)."""
+
+    phi_x: float = 0.0
+    phi_y: float = 0.0
+    magnitude: float = 0.0
+    bias: float | None = None
+    method: str = ""
+
+
+class BoostFrame2DResponse(BaseModel):
+    """Per-frame boosting payload: query point + live TreeSHAP push vector."""
+
+    x_feature: str = ""
+    y_feature: str = ""
+    row_index: int = 0
+    query_world: list[float] = Field(default_factory=lambda: [0.0, 0.0])
+    family: str = ""
+    algorithm: str = ""
+    shap: BoostFrameShap | None = None
     computation_time_ms: float = 0.0
 
 
@@ -463,6 +497,103 @@ class ProjectionOrchestrator:
             outlier=bool(state["outlier"]),
             display_capped=bool(state["display_capped"]),
             total_neighbors=int(state["total_neighbors"]),
+            computation_time_ms=round((time.perf_counter() - started) * 1000.0, 2),
+        )
+
+    async def build_boost_frame(self, req: ProjectionBoostFrameRequest) -> BoostFrame2DResponse:
+        """Phase 46 — per-frame boosting SHAP state (one native row call, < 5 ms)."""
+        from app.core.math_3d import WorldCoordinateScaler
+        from app.domains.model_engine.adapters.boosting.boosting_2d_extractor import (
+            Boosting2DExtractor,
+        )
+
+        started = time.perf_counter()
+        mapping = self._mappings.get(req.mapping_id)
+        if mapping.dataset_id != req.dataset_id or mapping.model_id != req.model_id:
+            raise DomainException(
+                code="MAPPING_MISMATCH",
+                message="Mapping does not belong to the given dataset/model pair",
+                http_status=422,
+            )
+        items = sorted(mapping.items, key=lambda x: x.feature_index)
+        if not items:
+            raise DomainException(
+                code="PROJECTION_NO_FEATURES",
+                message="Mapping has no feature columns — map at least one feature first",
+                http_status=422,
+            )
+        resolved_x = _resolve_feature_index(items, req.x_feature)
+        resolved_y = _resolve_feature_index(items, req.y_feature)
+        if resolved_x is None or resolved_y is None:
+            raise DomainException(
+                code="PROJECTION_UNKNOWN_FEATURE",
+                message=f"Unknown feature(s): x='{req.x_feature}', y='{req.y_feature}'",
+                http_status=422,
+            )
+
+        model_obj = self._models.get_model(req.model_id)
+
+        feature_cols = [i.dataset_column_name for i in items if i.dataset_column_name]
+        parquet_path = self._datasets._require(req.dataset_id)
+        import pyarrow.parquet as pq
+
+        pf = pq.ParquetFile(parquet_path, memory_map=True)
+        total_rows = int(pf.metadata.num_rows)
+        if req.row_index >= total_rows:
+            raise DomainException(
+                code="PROJECTION_ROW_OUT_OF_RANGE",
+                message=f"Row index {req.row_index} exceeds dataset size ({total_rows} rows)",
+                http_status=422,
+            )
+
+        df = self._datasets.load_dataframe(req.dataset_id, columns=feature_cols)
+        try:
+            df = df.reindex(columns=feature_cols)
+            X = TypeCastingEngine.build_float32_matrix(df, items)
+        finally:
+            del df
+        state = await asyncio.to_thread(
+            Boosting2DExtractor.extract_frame_shap,
+            model_obj=model_obj,
+            X=X,
+            row_index=int(req.row_index),
+            x_feature_idx=int(resolved_x),
+            y_feature_idx=int(resolved_y),
+        )
+        del X
+        if state is None:
+            raise DomainException(
+                code="BOOST_FRAME_UNAVAILABLE",
+                message="boost-frame-2d requires a fitted gradient-boosting model",
+                http_status=422,
+            )
+
+        # Scales must match the contour viewport exactly, so rebuild them
+        # from the dataset column (same source as the contour path).
+        df2 = self._datasets.load_dataframe(req.dataset_id, columns=feature_cols)
+        try:
+            df2 = df2.reindex(columns=feature_cols)
+            X2 = TypeCastingEngine.build_float32_matrix(df2, items)
+        finally:
+            del df2
+        feature_names = [i.dataset_column_name or i.model_feature_name for i in items]
+        x_scale = WorldCoordinateScaler.build_axis_scale(feature_names[resolved_x], X2[:, resolved_x])
+        y_scale = WorldCoordinateScaler.build_axis_scale(feature_names[resolved_y], X2[:, resolved_y])
+        del X2
+
+        def _w(v: float, scale: Any) -> float:
+            arr = WorldCoordinateScaler.to_world_coords(np.asarray([v], dtype=np.float32), scale)
+            return round(float(arr[0]), 3)
+
+        qx, qy = state["query_raw"]
+        return BoostFrame2DResponse(
+            x_feature=feature_names[resolved_x],
+            y_feature=feature_names[resolved_y],
+            row_index=int(req.row_index),
+            query_world=[_w(float(qx), x_scale), _w(float(qy), y_scale)],
+            family=str(state["family"]),
+            algorithm=str(state["algorithm"]),
+            shap=BoostFrameShap(**state["shap_vector"]) if state.get("shap_vector") else None,
             computation_time_ms=round((time.perf_counter() - started) * 1000.0, 2),
         )
 
