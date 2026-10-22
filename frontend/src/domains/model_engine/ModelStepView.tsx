@@ -21,6 +21,7 @@ import { AdaBoostInspectorPanel } from './components/AdaBoostInspectorPanel';
 import { SklearnGbmInspectorPanel } from './components/SklearnGbmInspectorPanel';
 import { HistGbmInspectorPanel } from './components/HistGbmInspectorPanel';
 import { XgboostInspectorPanel } from './components/XgboostInspectorPanel';
+import { LightgbmInspectorPanel } from './components/LightgbmInspectorPanel';
 import { useModelStore } from './store/useModelStore';
 import { useSystemStore } from '../../core/store/useSystemStore';
 
@@ -86,6 +87,7 @@ export function ModelStepView() {
       <SklearnGbmInspectorPanel />
       <HistGbmInspectorPanel />
       <XgboostInspectorPanel />
+      <LightgbmInspectorPanel />
 
       <div className="flex justify-between">
         <button
