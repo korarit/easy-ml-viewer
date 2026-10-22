@@ -57,6 +57,13 @@ try:  # Phase 46 — optional boosting-heavyweight overlays (same contract).
 except ImportError:  # pragma: no cover - extractor module missing
     Boosting2DExtractor = None  # type: ignore[assignment,misc]
 
+try:  # Phase 47 — optional neural/pipeline/ONNX overlays (same contract).
+    from app.domains.model_engine.adapters.neural_onnx.neural_2d_extractor import (
+        Neural2DExtractor,
+    )
+except ImportError:  # pragma: no cover - extractor module missing
+    Neural2DExtractor = None  # type: ignore[assignment,misc]
+
 #: Batch size shared with the Phase-09 surface path (memory budget §5.1).
 PREDICT_CHUNK_SIZE = 2_500
 
@@ -148,6 +155,11 @@ class Contour2DResponse(BaseModel):
     boosting_2d: dict[str, Any] | None = Field(
         default=None,
         description="GBM cuts / hist bins / xgb+lgbm polygons+SHAP / catboost checkerboard",
+    )
+    # Phase 47 — neural / pipeline / ONNX overlays (None when N/A).
+    neural_2d: dict[str, Any] | None = Field(
+        default=None,
+        description="MLP neuron cuts + dead ReLUs / pipeline raw-scaled toggle / ONNX latent SVD plane",
     )
     computation_time_ms: float = 0.0
 
@@ -539,6 +551,27 @@ class Contour2DGenerator:
             except Exception:
                 boosting_2d = None
 
+        # Phase 47 — neural / pipeline / ONNX overlays (fail-safe, capped).
+        neural_2d: dict[str, Any] | None = None
+        if Neural2DExtractor is not None:
+            try:
+                neural_geometry = Neural2DExtractor.extract_neural_2d_geometry(
+                    model_obj=model_obj,
+                    X=ref,
+                    x_feature_idx=int(x_feature_idx),
+                    y_feature_idx=int(y_feature_idx),
+                    x_feature_name=x_feature_name,
+                    y_feature_name=y_feature_name,
+                    x_range_raw=(float(x_min), float(x_max)),
+                    y_range_raw=(float(y_min), float(y_max)),
+                    x_scale=x_scale,
+                    y_scale=y_scale,
+                    active_row=current_row_values,
+                )
+                neural_2d = neural_geometry.model_dump(mode="json") if neural_geometry is not None else None
+            except Exception:
+                neural_2d = None
+
         if prediction_task == "classification":
             proba = _chunked_proba_matrix(model_obj, final_est, grid)
             if proba is None:
@@ -659,5 +692,6 @@ class Contour2DGenerator:
             probabilistic_2d=probabilistic_2d,
             trees_2d=trees_2d,
             boosting_2d=boosting_2d,
+            neural_2d=neural_2d,
             computation_time_ms=elapsed_ms,
         )
