@@ -12,6 +12,7 @@ import { SgdMarginInspectorPanel } from './components/SgdMarginInspectorPanel';
 import { KnnRadarInspectorPanel } from './components/KnnRadarInspectorPanel';
 import { SvmKernelInspectorPanel } from './components/SvmKernelInspectorPanel';
 import { GnbBellInspectorPanel } from './components/GnbBellInspectorPanel';
+import { DiscreteNbInspectorPanel } from './components/DiscreteNbInspectorPanel';
 import { useModelStore } from './store/useModelStore';
 import { useSystemStore } from '../../core/store/useSystemStore';
 
@@ -68,6 +69,7 @@ export function ModelStepView() {
       <KnnRadarInspectorPanel />
       <SvmKernelInspectorPanel />
       <GnbBellInspectorPanel />
+      <DiscreteNbInspectorPanel />
 
       <div className="flex justify-between">
         <button
