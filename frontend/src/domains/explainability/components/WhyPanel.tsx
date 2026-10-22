@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useExplainabilityStore } from '../store/useExplainabilityStore';
+import { usePlaybackStore } from '../../playback/store/usePlaybackStore';
 import {
   formatContribution,
   formatRawValue,
@@ -75,6 +76,9 @@ export function WhyPanel() {
   const setTopK = useExplainabilityStore((s) => s.setTopK);
   const clearError = useExplainabilityStore((s) => s.clearError);
   const featureCount = useExplainabilityStore((s) => s.featureCount);
+  const liveFrame = usePlaybackStore((s) => s.currentFrameIndex);
+  const playbackStatus = usePlaybackStore((s) => s.status);
+  const stale = !!explanation && explanationFrame !== null && explanationFrame !== liveFrame;
 
   const maxAbs = useMemo(() => {
     if (!explanation || explanation.attributions.length === 0) return 1;
@@ -129,7 +133,13 @@ export function WhyPanel() {
               <span className="font-mono-tabular text-[10px] tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
                 Frame {explanationFrame ?? explanation.frame_index} · Row #{explanation.dataset_row_index}
               </span>
-              <div className="flex gap-1" role="group" aria-label="How many top features to show">
+              <div className="flex items-center gap-1">
+                {(isLoading || (stale && playbackStatus === 'playing')) && (
+                  <span className="font-mono-tabular text-[10px]" style={{ color: '#7dd3fc' }} role="status">
+                    ● following playback…
+                  </span>
+                )}
+                <div className="flex gap-1" role="group" aria-label="How many top features to show">
                 {TOP_K_OPTIONS.map((k) => (
                   <button
                     key={k}
@@ -157,6 +167,7 @@ export function WhyPanel() {
                 >
                   All
                 </button>
+              </div>
               </div>
             </div>
             <div className="font-mono-tabular mb-1 text-[11px]" style={{ color: 'var(--text-secondary)' }}>

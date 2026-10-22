@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Ban, Repeat, Repeat1 } from 'lucide-react';
 import { usePlaybackStore } from '../store/usePlaybackStore';
 import { useStage3DStore } from '../../stage3d/store/useStage3DStore';
@@ -119,14 +119,32 @@ export function PlaybackSyncHost() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetId, modelId, mappingId, queueKey]);
 
-  // Per-frame "why": fetch the current frame's explanation (debounced so
-  // 60 FPS playback aborts in-flight and settles on the latest frame).
+  // Per-frame "why": while playing, throttle to ~1 fetch/sec so responses
+  // can actually land instead of being aborted every frame; when paused
+  // or scrubbing, fetch the settled frame quickly.
+  const playbackStatus = usePlaybackStore((s) => s.status);
+  const lastWhyFetchRef = useRef(0);
   useEffect(() => {
+    if (playbackStatus === 'playing') {
+      const elapsed = Date.now() - lastWhyFetchRef.current;
+      if (elapsed >= 1000) {
+        lastWhyFetchRef.current = Date.now();
+        void useExplainabilityStore.getState().fetchFrame(currentFrameIndex);
+        return;
+      }
+      const timer = window.setTimeout(() => {
+        lastWhyFetchRef.current = Date.now();
+        void useExplainabilityStore
+          .getState()
+          .fetchFrame(usePlaybackStore.getState().currentFrameIndex);
+      }, 1000 - elapsed);
+      return () => window.clearTimeout(timer);
+    }
     const timer = window.setTimeout(() => {
       void useExplainabilityStore.getState().fetchFrame(currentFrameIndex);
-    }, 200);
+    }, 150);
     return () => window.clearTimeout(timer);
-  }, [currentFrameIndex, explainTopK]);
+  }, [currentFrameIndex, playbackStatus, explainTopK]);
 
   return null;
 }
