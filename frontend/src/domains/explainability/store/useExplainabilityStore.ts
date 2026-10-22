@@ -3,6 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import {
   fetchBuildExplainabilitySession,
   fetchFrameExplanation,
+  fetchFrameExplanationBatch,
   type BuildExplainabilitySessionParams,
 } from '../api/explainabilityApi';
 import type {
@@ -43,8 +44,13 @@ interface ExplainabilityState {
   hudVisible: boolean;
   hudCompact: boolean;
   panelCollapsed: boolean;
+  /** Prefetched explanations by frame — playback reads here, not the API. */
+  frameCache: Record<number, FrameExplanation>;
+  isPrefetching: boolean;
   loadSession: (params: BuildExplainabilitySessionParams & { buildKey: string }) => Promise<void>;
   fetchFrame: (frameIndex: number) => Promise<void>;
+  /** Batch-fill the cache; skips frames already cached. */
+  prefetchFrames: (frameIndices: number[]) => Promise<void>;
   setTopK: (topK: TopKOption) => void;
   toggleHud: () => void;
   toggleCompactHud: () => void;
@@ -71,6 +77,8 @@ export const useExplainabilityStore = create<ExplainabilityState>()(
     hudVisible: true,
     hudCompact: false,
     panelCollapsed: false,
+    frameCache: {},
+    isPrefetching: false,
 
     loadSession: async (params) => {
       const s = get();
@@ -117,6 +125,9 @@ export const useExplainabilityStore = create<ExplainabilityState>()(
           baseValue: payload.base_value,
           explanation: null,
           explanationFrame: null,
+          // Stale frames belong to the old session — drop them so playback
+          // can never show a previous queue's reasons.
+          frameCache: isNewContext || !get().sessionId ? {} : get().frameCache,
         });
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
@@ -129,9 +140,14 @@ export const useExplainabilityStore = create<ExplainabilityState>()(
     },
 
     fetchFrame: async (frameIndex) => {
-      const { sessionId, featureCount, topK, explanationFrame } = get();
+      const { sessionId, featureCount, topK, explanationFrame, frameCache } = get();
       if (!sessionId) return;
-      if (explanationFrame === frameIndex && get().explanation) return;
+      const cached = frameCache[frameIndex];
+      if (cached && explanationFrame === frameIndex) return;
+      if (cached) {
+        set({ explanation: cached, explanationFrame: frameIndex });
+        return;
+      }
       if (inFlightAbort) inFlightAbort.abort();
       const controller = new AbortController();
       inFlightAbort = controller;
@@ -145,7 +161,12 @@ export const useExplainabilityStore = create<ExplainabilityState>()(
           controller.signal,
         );
         if (controller.signal.aborted || seq !== requestSeq) return;
-        set({ explanation: payloadToExplanation(payload), explanationFrame: frameIndex });
+        const entity = payloadToExplanation(payload);
+        set((s) => ({
+          explanation: entity,
+          explanationFrame: frameIndex,
+          frameCache: { ...s.frameCache, [frameIndex]: entity },
+        }));
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
         if (controller.signal.aborted || seq !== requestSeq) return;
@@ -156,8 +177,39 @@ export const useExplainabilityStore = create<ExplainabilityState>()(
       }
     },
 
+    prefetchFrames: async (frameIndices) => {
+      const { sessionId, featureCount, topK, frameCache } = get();
+      if (!sessionId || get().isPrefetching) return;
+      const missing = [...new Set(frameIndices)].filter(
+        (f) => Number.isInteger(f) && f >= 0 && !(f in frameCache),
+      );
+      if (missing.length === 0) return;
+      set({ isPrefetching: true });
+      try {
+        const payloads = await fetchFrameExplanationBatch(
+          sessionId,
+          missing.slice(0, 2000),
+          resolveTopK(topK, featureCount),
+        );
+        if (!payloads.length) return;
+        set((s) => {
+          // Ignore late responses from a previous session/topK.
+          if (s.sessionId !== sessionId || s.topK !== topK) return s;
+          const next = { ...s.frameCache };
+          for (const p of payloads) {
+            next[p.frame_index] = payloadToExplanation(p);
+          }
+          return { frameCache: next };
+        });
+      } catch {
+        /* Prefetch is best-effort — single fetchFrame covers misses. */
+      } finally {
+        if (get().sessionId === sessionId) set({ isPrefetching: false });
+      }
+    },
+
     setTopK: (topK) => {
-      set({ topK, explanation: null, explanationFrame: null });
+      set({ topK, explanation: null, explanationFrame: null, frameCache: {} });
     },
 
     toggleHud: () => set((s) => ({ hudVisible: !s.hudVisible })),

@@ -103,3 +103,25 @@ def test_get_frame_explanation_404_and_422():
     session = _build_session(client, [0, 1])
     bad = client.get(f"/api/v1/explainability/{session['session_id']}/frames/99")
     assert bad.status_code == 422
+
+
+def test_batch_frames_prefetch_skips_out_of_range():
+    """Batch prefetch: one call returns many frames; bad indices are skipped."""
+    ExplainabilityOrchestrator.clear_sessions()
+    client = TestClient(app)
+    session = _build_session(client, [0, 1, 2, 3])
+    session_id = session["session_id"]
+
+    resp = client.post(
+        f"/api/v1/explainability/{session_id}/frames/batch",
+        json={"frame_indices": [0, 1, 2, 99, -1, 1], "top_k": 10},
+    )
+    assert resp.status_code == 200, resp.text
+    items = resp.json()["explanations"]
+    assert [e["frame_index"] for e in items] == [0, 1, 2]
+
+    missing = client.post(
+        f"/api/v1/explainability/exp_missing/frames/batch",
+        json={"frame_indices": [0], "top_k": 10},
+    )
+    assert missing.status_code == 404

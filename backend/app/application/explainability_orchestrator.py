@@ -55,6 +55,7 @@ MAX_QUEUE_POINTS = 10_000
 MAX_SESSIONS = 32
 SORTED_REF_MAX_ROWS = 5_000
 DEFAULT_TOP_K = 10
+BATCH_MAX_FRAMES = 2_000
 
 
 class ExplainabilitySessionBuildRequest(BaseModel):
@@ -63,6 +64,11 @@ class ExplainabilitySessionBuildRequest(BaseModel):
     mapping_id: str = Field(min_length=1)
     selected_row_indices: list[int] = Field(default_factory=list)
     session_id: str | None = None
+
+
+class ExplainabilityFrameBatchRequest(BaseModel):
+    frame_indices: list[int] = Field(default_factory=list, max_length=BATCH_MAX_FRAMES)
+    top_k: int = Field(default=DEFAULT_TOP_K, ge=1, le=500)
 
 
 class ExplainabilitySessionState(BaseModel):
@@ -386,6 +392,33 @@ class ExplainabilityOrchestrator:
             other_contributions_sum=float(other_sum),
         )
 
+    def get_frame_explanations(
+        self, session_id: str, frame_indices: list[int], top_k: int = DEFAULT_TOP_K
+    ) -> list[FrameExplanationEntity]:
+        """Batch variant for prefetch: skips out-of-range frames instead of
+        raising, so the frontend can request a blind window around playback."""
+        try:
+            state = _SESSIONS[session_id]
+        except KeyError as exc:
+            raise DomainException(
+                code="EXPLAIN_SESSION_NOT_FOUND",
+                message=f"Explainability session '{session_id}' not found — build it via POST /api/v1/explainability/sessions/build first",
+                http_status=404,
+            ) from exc
+        n = len(state.row_indices)
+        out: list[FrameExplanationEntity] = []
+        seen: set[int] = set()
+        for raw in frame_indices:
+            try:
+                frame_index = int(raw)
+            except (TypeError, ValueError):
+                continue
+            if frame_index < 0 or frame_index >= n or frame_index in seen:
+                continue
+            seen.add(frame_index)
+            out.append(self.get_frame_explanation(session_id, frame_index, top_k=top_k))
+        return out
+
     @staticmethod
     def clear_sessions() -> int:
         n = len(_SESSIONS)
@@ -441,3 +474,7 @@ def session_to_response(state: ExplainabilitySessionState) -> dict[str, Any]:
 
 def frame_to_response(entity: FrameExplanationEntity) -> dict[str, Any]:
     return entity.model_dump(mode="json")
+
+
+def frames_to_response(entities: list[FrameExplanationEntity]) -> dict[str, Any]:
+    return {"explanations": [e.model_dump(mode="json") for e in entities]}

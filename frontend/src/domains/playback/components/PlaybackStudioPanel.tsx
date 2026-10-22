@@ -119,9 +119,31 @@ export function PlaybackSyncHost() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetId, modelId, mappingId, queueKey]);
 
+  // Prefetch a window of explanations so playback reads from cache.
+  // Small queues (<=2000 frames) load fully once per session; big queues
+  // load ±400 frames around the playhead, one window at a time.
+  const explainSessionId = useExplainabilityStore((s) => s.sessionId);
+  const explainRowCount = useExplainabilityStore((s) => s.rowIndices.length);
+  const winKey =
+    explainRowCount <= 2000 ? `all:${explainSessionId ?? ''}` : `w${Math.floor(currentFrameIndex / 400)}`;
+  useEffect(() => {
+    if (!explainSessionId || explainRowCount === 0) return;
+    const total = explainRowCount;
+    let frames: number[];
+    if (total <= 2000) {
+      frames = Array.from({ length: total }, (_, i) => i);
+    } else {
+      const cur = usePlaybackStore.getState().currentFrameIndex;
+      const lo = Math.max(0, cur - 400);
+      const hi = Math.min(total - 1, cur + 400);
+      frames = Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+    }
+    void useExplainabilityStore.getState().prefetchFrames(frames);
+  }, [explainSessionId, explainRowCount, winKey, explainTopK]);
   // Per-frame "why": while playing, throttle to ~1 fetch/sec so responses
   // can actually land instead of being aborted every frame; when paused
-  // or scrubbing, fetch the settled frame quickly.
+  // or scrubbing, fetch the settled frame quickly (usually a cache hit
+  // after prefetch).
   const playbackStatus = usePlaybackStore((s) => s.status);
   const lastWhyFetchRef = useRef(0);
   useEffect(() => {

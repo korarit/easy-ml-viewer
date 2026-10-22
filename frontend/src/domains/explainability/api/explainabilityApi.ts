@@ -41,3 +41,21 @@ export async function fetchFrameExplanation(
     { signal },
   );
 }
+
+/** One call for many frames — powers prefetch so playback never waits on the API. */
+export async function fetchFrameExplanationBatch(
+  sessionId: string,
+  frameIndices: number[],
+  topK: number,
+  signal?: AbortSignal,
+): Promise<FrameExplanationPayload[]> {
+  const body = await apiFetch<{ explanations: FrameExplanationPayload[] }>(
+    `/api/v1/explainability/${encodeURIComponent(sessionId)}/frames/batch`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ frame_indices: frameIndices, top_k: topK }),
+      signal,
+    },
+  );
+  return body.explanations ?? [];
+}
