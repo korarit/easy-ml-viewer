@@ -5,6 +5,8 @@ import { useMappingStore } from '../mapping/store/useMappingStore';
 import { useTrajectoryQueueStore } from '../trajectory_queue/store/useTrajectoryQueueStore';
 import { useSystemStore } from '../../core/store/useSystemStore';
 import { useStage3DStore } from './store/useStage3DStore';
+import { Stage2DCanvas } from './components/Stage2DCanvas';
+import { LayerVisibilityControls2D, ViewModeSwitcherPill } from './components/ViewModeSwitcherPill';
 import { useProjectionStore } from '../projection3d/store/useProjectionStore';
 import type { AvailableFeature } from '../projection3d/types/projection.types';
 import { ProjectionControlToolbar } from '../projection3d/components/ProjectionControlToolbar';
@@ -57,6 +59,8 @@ export function Stage3DStepView() {
   const points = useStage3DStore((s) => s.points);
   const playbackFrameIndex = usePlaybackStore((s) => s.currentFrameIndex);
   const projError = useProjectionStore((s) => s.projError);
+  const contourError = useProjectionStore((s) => s.contourError);
+  const viewMode = useStage3DStore((s) => s.viewMode);
   const projLoading = useProjectionStore((s) => s.isLoading);
   const projMode = useProjectionStore((s) => s.mode);
   const projX = useProjectionStore((s) => s.xFeature);
@@ -125,6 +129,24 @@ export function Stage3DStepView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, datasetId, modelId, mappingId, queueKey, projMode, projX, projY, projZ, projPinning, projLod, projRobust, frameForPinning, featureNames.join('|')]);
 
+  // Phase 41 — bake the dense 2D contour grid when the planar viewport is
+  // active (frontend cache makes 2D↔3D toggles free after the first bake).
+  useEffect(() => {
+    if (!ready || !datasetId || !modelId || !mappingId || viewMode !== '2d') return;
+    if (featureNames.length > 0 && (!featureNames.includes(projX) || !featureNames.includes(projY))) return;
+    const timer = window.setTimeout(() => {
+      void useProjectionStore.getState().fetchContour({
+        datasetId,
+        modelId,
+        mappingId,
+        queueRowIndices: queueIndices,
+        currentFrameIndex: frameForPinning >= 0 ? frameForPinning : null,
+      });
+    }, 150);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, datasetId, modelId, mappingId, queueKey, viewMode, projX, projY, projPinning, projRobust, frameForPinning, featureNames.join('|')]);
+
   if (!ready) {
     return (
       <section
@@ -161,7 +183,14 @@ export function Stage3DStepView() {
     <section className="flex h-full min-h-0 w-full flex-1 flex-col gap-2 overflow-hidden p-2">
       <PlaybackSyncHost />
       <MlvReplayModeBanner />
-      {!cinemaMode && <ProjectionControlToolbar variant="compact" availableFeatures={availableFeatures} />}
+      {!cinemaMode && (
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <ViewModeSwitcherPill />
+          <div className="min-w-0 flex-1">
+            <ProjectionControlToolbar variant="compact" availableFeatures={availableFeatures} />
+          </div>
+        </div>
+      )}
       {cinemaMode && (
         <div className="flex shrink-0 items-center justify-center gap-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
           <span>Cinema mode — panels hidden.</span>
@@ -177,6 +206,11 @@ export function Stage3DStepView() {
       {projError && (
         <div className="shrink-0 rounded px-3 py-2 text-xs" style={{ background: 'rgba(244,63,94,0.12)', color: '#f43f5e' }} role="alert">
           Surface failed: {projError}
+        </div>
+      )}
+      {contourError && viewMode === '2d' && (
+        <div className="shrink-0 rounded px-3 py-2 text-xs" style={{ background: 'rgba(244,63,94,0.12)', color: '#f43f5e' }} role="alert">
+          2D contour failed: {contourError}
         </div>
       )}
       {projLoading && points.length === 0 ? (
@@ -199,9 +233,9 @@ export function Stage3DStepView() {
           {/* Main row: canvas (flex-1) + dock tabs (fixed 320px, internal scroll). */}
           <div className="flex min-h-0 flex-1 flex-col gap-2 lg:flex-row">
             <div className="relative min-h-[220px] flex-1 lg:min-h-0">
-              <Stage3DCanvas />
+              {viewMode === '2d' ? <Stage2DCanvas /> : <Stage3DCanvas />}
               <VideoRecordingIndicatorBar />
-              {!cinemaMode && <PcaVarianceBadge featureNames={featureNames} />}
+              {!cinemaMode && viewMode === '3d' && <PcaVarianceBadge featureNames={featureNames} />}
             </div>
             {!cinemaMode && (
               <aside
@@ -234,6 +268,7 @@ export function Stage3DStepView() {
                   {dockTab === 'timeline' && <TimelineInspectorPanel />}
                   {dockTab === 'scene' && (
                     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto" aria-label="Scene tuning">
+                      <LayerVisibilityControls2D />
                       <ProjectionControlToolbar variant="full" availableFeatures={availableFeatures} />
                       <div
                         className="rounded-lg px-3 py-2"
