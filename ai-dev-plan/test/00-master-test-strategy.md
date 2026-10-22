@@ -1,8 +1,8 @@
-# Master Testing Strategy & 40-Phase Synchronized Quality Assurance Blueprint (`ai-dev-plan/test/`)
+# Master Testing Strategy & 48-Phase Synchronized Quality Assurance Blueprint (`ai-dev-plan/test/`)
 
-> **เป้าหมายสูงสุดของการทดสอบ (Testing Vision)**: รับประกันว่าระบบ **Easy ML Viewer** ในทุกๆ Phase ตั้งแต่ **Phase 01 ถึง Phase 40** มีชุดทดสอบแบบ **1-ต่อ-1 (`test-phase-01` $\leftrightarrow$ `phase-01` จนถึง `test-phase-40` $\leftrightarrow$ `phase-40`)** ที่ตรวจสอบครบทั้ง:
+> **เป้าหมายสูงสุดของการทดสอบ (Testing Vision)**: รับประกันว่าระบบ **Easy ML Viewer** ในทุกๆ Phase ตั้งแต่ **Phase 01 ถึง Phase 48** มีชุดทดสอบแบบ **1-ต่อ-1 (`test-phase-01` $\leftrightarrow$ `phase-01` จนถึง `test-phase-48` $\leftrightarrow$ `phase-48`)** ที่ตรวจสอบครบทั้ง:
 > 1. **ความถูกต้องทางคณิตศาสตร์ 100% (Mathematical & Internal Flow Parity)**
-> 2. **ความสมบูรณ์ของ UI Feature List & UX Flows (Component States, Keyboard Shortcuts, 3D Interactions)**
+> 2. **ความสมบูรณ์ของ UI Feature List & UX Flows (Component States, Keyboard Shortcuts, 2D/3D Dual-Mode Interactions)**
 > 3. **การควบคุมหน่วยความจำและ VRAM อย่างเข้มงวด (Memory Check Plan & Zero-Leak Guarantee)**
 > 4. **ประสิทธิภาพการใช้ CPU / GPU / Process Lifecycle (Resource Optimization Benchmarks)**
 > 5. **การทำงานแบบ 100% Offline (Air-Gapped Zero External Network Dependency) บน Windows, macOS, และ Linux**
@@ -154,3 +154,18 @@ easy-ml-viewer/
 | Test Phase | ไฟล์แผนการทดสอบ (`ai-dev-plan/test/`) | คู่ขนานกับไฟล์ Dev (`ai-dev-plan/dev/`) | จุดเน้นการทดสอบหลัก |
 | :---: | :--- | :--- | :--- |
 | **40** | **[test-phase-40-offline-packaging-and-stress-test.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-40-offline-packaging-and-stress-test.md)** | [phase-40](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-40-offline-packaging-and-stress-test.md) | Air-Gap Network Test, `generate_all_20_demos.py`, Synchronized Dual `.mlv` Compare, 100k-Row Stress & OS Port Cleanup |
+
+---
+
+### 🗺️ Part 8: 2D Intuitive Studio & Dual-Mode Visualization Test Suites (Phases 41 - 48)
+
+| Test Phase | ไฟล์แผนการทดสอบ (`ai-dev-plan/test/`) | คู่ขนานกับไฟล์ Dev (`ai-dev-plan/dev/`) | จุดเน้นการทดสอบหลัก |
+| :---: | :--- | :--- | :--- |
+| **41** | **[test-phase-41-dual-mode-2d-3d-stage-engine-and-contour-generator.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-41-dual-mode-2d-3d-stage-engine-and-contour-generator.md)** | [phase-41](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-41-dual-mode-2d-3d-stage-engine-and-contour-generator.md) | 2D/3D ViewMode Toggle (`V` key), Marching Squares Exact Boundary Segments, 2D Grid Latency & Reticle Crosshairs |
+| **42** | **[test-phase-42-model-group-linear-2d-geometry.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-42-model-group-linear-2d-geometry.md)** | [phase-42](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-42-model-group-linear-2d-geometry.md) | Linear 2D Formulas Parity, Normal Vectors, Margin Corridor $W=2/\|\mathbf{w}\|$, Lasso Zero-Axis Detection & Regression Lines |
+| **43** | **[test-phase-43-model-group-distance-kernel-2d-geometry.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-43-model-group-distance-kernel-2d-geometry.md)** | [phase-43](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-43-model-group-distance-kernel-2d-geometry.md) | KNN Radar Radius $R_t$, $K$ Laser Lines, SVM RBF Margin Corridor Bounds $f=\pm 1$ & Support Vector Halos Sizing |
+| **44** | **[test-phase-44-model-group-probabilistic-discriminant-2d-geometry.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-44-model-group-probabilistic-discriminant-2d-geometry.md)** | [phase-44](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-44-model-group-probabilistic-discriminant-2d-geometry.md) | GNB Bivariate Ellipses Radii $\sqrt{\text{var}}$, LDA Linear Line Parity vs QDA Quadratic Conic Curvature |
+| **45** | **[test-phase-45-model-group-trees-ensembles-2d-geometry.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-45-model-group-trees-ensembles-2d-geometry.md)** | [phase-45](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-45-model-group-trees-ensembles-2d-geometry.md) | Decision Tree 2D Partitions, Active Leaf Bounding Box Containment, RF Consensus Aggregation & AdaBoost Stage Slider |
+| **46** | **[test-phase-46-model-group-gradient-boosting-2d-geometry.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-46-model-group-gradient-boosting-2d-geometry.md)** | [phase-46](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-46-model-group-gradient-boosting-2d-geometry.md) | XGBoost 2D TreeSHAP Vectors Parity, CatBoost Oblivious $2^D$ Checkerboard Symmetry & HistGBM 255-Bin Grids |
+| **47** | **[test-phase-47-model-group-neural-pipeline-onnx-2d-geometry.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-47-model-group-neural-pipeline-onnx-2d-geometry.md)** | [phase-47](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-47-model-group-neural-pipeline-onnx-2d-geometry.md) | MLP First-Layer Hyperplanes $z_k^{(1)}=0$, Dead ReLUs Detection, Pipeline Raw/Scaled Inversion & ONNX Latent SVD |
+| **48** | **[test-phase-48-dual-mode-compare-mlv-baker-export-and-hardening.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-48-dual-mode-compare-mlv-baker-export-and-hardening.md)** | [phase-48](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-48-dual-mode-compare-mlv-baker-export-and-hardening.md) | Dual 2D Conflict Area Mask, `.mlv` 2D Serialization Roundtrip, SVG Export XML Validation & 100k-Row 2D Stress SLA |

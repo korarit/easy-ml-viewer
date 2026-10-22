@@ -1,12 +1,12 @@
-# Master Development Plan — Easy ML Viewer (40 Phases Production Blueprint)
+# Master Development Plan — Easy ML Viewer (48 Phases Production Blueprint)
 
-เอกสารฉบับนี้คือ **พิมพ์เขียวแม่บท (Master Production Blueprint)** ของโปรเจกต์ **Easy ML Viewer** ซึ่งควบคุมลำดับการพัฒนาทั้งหมด **40 Phases** โดยจัดเรียงตาม **ลำดับการพึ่งพาทางวิศวกรรมจริง (Strict Dependency-First Order)** เพื่อให้ทีมพัฒนาหรือ AI Agent สามารถลงมือสร้างระบบทีละเฟสได้อย่างมั่นคง ทดสอบได้จริงในทุกก้าว และไม่เกิดปัญหาคอขวดทางหน่วยความจำหรือการรื้อโครงสร้างย้อนหลัง
+เอกสารฉบับนี้คือ **พิมพ์เขียวแม่บท (Master Production Blueprint)** ของโปรเจกต์ **Easy ML Viewer** ซึ่งควบคุมลำดับการพัฒนาทั้งหมด **48 Phases** โดยจัดเรียงตาม **ลำดับการพึ่งพาทางวิศวกรรมจริง (Strict Dependency-First Order)** เพื่อให้ทีมพัฒนาหรือ AI Agent สามารถลงมือสร้างระบบทีละเฟสได้อย่างมั่นคง ทดสอบได้จริงในทุกก้าว และไม่เกิดปัญหาคอขวดทางหน่วยความจำหรือการรื้อโครงสร้างย้อนหลัง
 
 ---
 
-## 1. ภาพรวมกลยุทธ์การเชื่อมโยงทั้ง 40 Phases (Dependency-First Integration Strategy)
+## 1. ภาพรวมกลยุทธ์การเชื่อมโยงทั้ง 48 Phases (Dependency-First Integration Strategy)
 
-การพัฒนาแบ่งออกเป็น **7 ช่วงหลัก (7 Strategic Parts)** ที่ต่อยอดกันเป็นชั้นๆ ดังนี้:
+การพัฒนาแบ่งออกเป็น **8 ช่วงหลัก (8 Strategic Parts)** ที่ต่อยอดกันเป็นชั้นๆ ดังนี้:
 
 ```text
 +---------------------------------------------------------------------------------------------------+
@@ -32,6 +32,19 @@
 +---------------------------------------------------------------------------------------------------+
 | PART 7 (Phase 40): CROSS-PLATFORM LAUNCHERS, 20-MODEL DEMO SUITE, DUAL .MLV COMPARE & HARDENING   |
 |  [Windows/Mac/Linux Launchers] + [20-Model Instant Gallery] + [Dual 3D Sync Compare] + [100k Test]|
++---------------------------------------------------------------------------------------------------+
+                                                 |
+                                                 v
++---------------------------------------------------------------------------------------------------+
+| PART 8 (Phases 41 - 48): 2D INTUITIVE STUDIO & DUAL-MODE VISUALIZATION SUITE (2D <-> 3D TOGGLE)    |
+|  - Phase 41: Dual-Mode 2D/3D Stage Engine, Orthographic Rig, Vector Grid & Universal Boundary Gen  |
+|  - Phase 42: 2D Geometries for Linear Models (OLS, Logistic, Ridge, Lasso, ElasticNet, SGD)        |
+|  - Phase 43: 2D Geometries for Distance & Kernel Models (KNN Radar, SVM Curved RBF & SV Rings)     |
+|  - Phase 44: 2D Geometries for Probabilistic & Discriminant Models (Gaussian NB, Discrete NB, QDA)|
+|  - Phase 45: 2D Geometries for Decision Trees & Ensembles (Decision Tree, Random Forest, AdaBoost) |
+|  - Phase 46: 2D Geometries for Gradient Boosting Heavyweights (GBM, HistGBM, XGBoost, Light, Cat) |
+|  - Phase 47: 2D Geometries for Neural Networks, Pipelines & Universal ONNX (MLP, Pipeline, ONNX)   |
+|  - Phase 48: Dual-Mode Synchronized Compare (2D/3D), 2D .mlv Persistence, SVG Export & Hardening  |
 +---------------------------------------------------------------------------------------------------+
 ```
 
@@ -75,7 +88,7 @@
 
 ## 4. ตารางควบคุมงบประมาณหน่วยความจำและทรัพยากรเครื่องมาตรฐาน (Global Memory Budget & Resource Optimization Contract)
 
-ทุกเฟสตั้งแต่ Phase 01 ถึง Phase 40 **ต้องปฏิบัติตามข้อกำหนดด้านหน่วยความจำและประสิทธิภาพตารางนี้อย่างเคร่งครัด**:
+ทุกเฟสตั้งแต่ Phase 01 ถึง Phase 48 **ต้องปฏิบัติตามข้อกำหนดด้านหน่วยความจำและประสิทธิภาพตารางนี้อย่างเคร่งครัด**:
 
 | องค์ประกอบ (Subsystem / Resource) | เพดานควบคุมสูงสุด (Strict Limit / Budget) | กลไกบังคับใช้ทางวิศวกรรม (Mandatory Engineering Enforcement) |
 | :--- | :--- | :--- |
@@ -146,36 +159,45 @@
 ### 🏁 Part 7: Final Packaging, 20-Model Demo Suite, Multi-Model Compare & Hardening (Phase 40)
 40. [phase-40-offline-packaging-and-stress-test.md](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-40-offline-packaging-and-stress-test.md) — สคริปต์รัน Offline บน Windows/Mac/Linux, 20-Model Instant Demo Suite, โหมดเปรียบเทียบ 2 โมเดล (Dual `.mlv` Compare) & 100,000-Row Stress Test
 
+### 🗺️ Part 8: 2D Intuitive Studio & Dual-Mode Visualization Suite (Phases 41 - 48)
+41. [phase-41-dual-mode-2d-3d-stage-engine-and-contour-generator.md](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-41-dual-mode-2d-3d-stage-engine-and-contour-generator.md) — เครื่องยนต์แสดงผลแบบสองโหมด (2D Planar $\leftrightarrow$ 3D Spatial), กล้อง Orthographic Rig, Vector Grid & อัลกอริทึม Marching Squares Decision Boundary
+42. [phase-42-model-group-linear-2d-geometry.md](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-42-model-group-linear-2d-geometry.md) — เรขาคณิต 2 มิติสำหรับกลุ่มโมเดล Linear (Linear Regression, Logistic, Ridge, Lasso Zero-Axis, ElasticNet & SGD Margin Corridor)
+43. [phase-43-model-group-distance-kernel-2d-geometry.md](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-43-model-group-distance-kernel-2d-geometry.md) — เรขาคณิต 2 มิติสำหรับกลุ่ม Distance & Kernel (KNN 2D Radar Circle & Spider Lines, SVM Curved RBF Boundary & Support Vector Halos)
+44. [phase-44-model-group-probabilistic-discriminant-2d-geometry.md](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-44-model-group-probabilistic-discriminant-2d-geometry.md) — เรขาคณิต 2 มิติสำหรับกลุ่ม Probabilistic & Discriminant (Gaussian NB Bivariate Ellipses $1\sigma-3\sigma$, Discrete NB Steps & LDA/QDA Conic Section Curves)
+45. [phase-45-model-group-trees-ensembles-2d-geometry.md](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-45-model-group-trees-ensembles-2d-geometry.md) — เรขาคณิต 2 มิติสำหรับกลุ่ม Decision Trees & Bagging (Decision Tree Axis-Aligned Partitions & Active Leaf Box, Random Forest Consensus & AdaBoost Cascade)
+46. [phase-46-model-group-gradient-boosting-2d-geometry.md](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-46-model-group-gradient-boosting-2d-geometry.md) — เรขาคณิต 2 มิติสำหรับกลุ่ม Gradient Boosting (XGBoost 2D TreeSHAP Vectors, CatBoost Oblivious Checkerboard Grid, HistGBM 255-Bin Grid & LightGBM Polygons)
+47. [phase-47-model-group-neural-pipeline-onnx-2d-geometry.md](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-47-model-group-neural-pipeline-onnx-2d-geometry.md) — เรขาคณิต 2 มิติสำหรับกลุ่ม Neural Networks, Pipelines & ONNX (MLP Hidden Neuron Hyperplanes & Dead ReLUs, Pipeline Raw/Scaled Space Toggle & ONNX 2D Latent SVD Plane)
+48. [phase-48-dual-mode-compare-mlv-baker-export-and-hardening.md](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-48-dual-mode-compare-mlv-baker-export-and-hardening.md) — โหมดเปรียบเทียบ 2 โมเดลในระนาบ 2D (Conflict Zones), บันทึกแคช 2D ในไฟล์ `.mlv`, ส่งออก Vector SVG/4K Image/Video & 100,000-Row 2D Stress Test
 
 ---
 
-## 6. ตารางสรุปเรขาคณิต 3 มิติ และกลไกการแกะโครงสร้างภายในของทั้ง 20+ ตระกูลโมเดล (20+ Model Families 3D & Explainability Matrix)
+## 6. ตารางสรุปเรขาคณิต 3 มิติ, เรขาคณิต 2 มิติ และกลไกการแกะโครงสร้างภายในของทั้ง 20+ ตระกูลโมเดล (20+ Model Families 3D/2D & Explainability Matrix)
 
-| ลำดับ | ตระกูลโมเดล (Model Family) | ไฟล์ที่รองรับ | รูปทรงเรขาคณิตบนฉาก 3D (3D Stage Geometry) | กลไกสกัดคำอธิบายภายใน (Internal Flow & Attribution) |
-| :--- | :--- | :--- | :--- | :--- |
-| **01** | **Linear Regression** (Phase 04) | `.pkl`, `.joblib` | ระนาบเอียง 3 มิติ (Tilted Flat Hyperplane) + เส้น Residual ทิ้งดิ่ง | สมการแม่นยำ $\phi_j = \beta_j (x_j - \bar{x}_j)$ |
-| **02** | **Logistic Regression** (Phase 18) | `.pkl`, `.joblib` | พื้นผิวคลื่นตัว S (3D Sigmoid S-Surface) / Softmax Terraces | Log-Odds Contribution $\beta_{c,j} x_j$ |
-| **03** | **Ridge ($L_2$) & Lasso ($L_1$)** (Phase 19) | `.pkl`, `.joblib` | ระนาบเอียงพร้อมแกนที่ถูกตัดเป็นศูนย์ (Zeroed-Out Feature Axes) | สัมประสิทธิ์ $\beta_j x_j$ + ป้ายเตือน Feature Sparsity |
-| **04** | **ElasticNet** (Phase 20) | `.pkl`, `.joblib` | ระนาบผสม $L_1 + L_2$ พร้อมแถบวัด `l1_ratio` | สัดส่วนการหดตัว $L_1$ vs $L_2$ Penalty |
-| **05** | **SGD Classifier / Regressor** (Phase 21) | `.pkl`, `.joblib` | ระนาบตัดสินใจ + ขอบเขต Margin $\pm 1/\|\mathbf{w}\|$ | ระยะห่างตั้งฉากจาก Hyperplane (`decision_function`) |
-| **06** | **K-Nearest Neighbors (KNN)** (Phase 22) | `.pkl`, `.joblib` | ลูกบอลเรดาร์ 3 มิติ + เส้นใยเชื่อมเพื่อนบ้าน $K$ จุด (`kneighbors`) | น้ำหนักโหวตตามระยะห่าง $w_k = 1 / (d_k + \epsilon)$ |
-| **07** | **SVM (`SVC`, `SVR`, `LinearSVC`)** (Phase 23) | `.pkl`, `.joblib` | พื้นผิวอานม้าโค้งมน (RBF Kernel Saddle) + เสาแสง Support Vectors | แรงดึงดูดจาก Support Vectors $\alpha_m y_m K(\mathbf{x}_m, \mathbf{x})$ |
-| **08** | **Gaussian Naive Bayes** (Phase 24) | `.pkl`, `.joblib` | ภูเขาระฆังคว่ำความน่าจะเป็น 3 มิติ (3D Gaussian Bell Hills) | ผลรวม Log-Likelihood $-\frac{(x_j - \mu_{c,j})^2}{2\sigma^2_{c,j}}$ |
-| **09** | **Multinomial & Bernoulli NB** (Phase 25) | `.pkl`, `.joblib` | หอคอยแท่งความน่าจะเป็นสะสม (3D Log-Likelihood Towers) | คะแนน Evidence รายคำ/รายบิต $x_j \log P(f_j|c)$ |
-| **10** | **LDA & QDA** (Phase 26) | `.pkl`, `.joblib` | ทรงรีความแปรปรวนร่วม 3 มิติ (3D Covariance Ellipsoids) | ระยะห่าง Mahalanobis $(\mathbf{x}-\boldsymbol{\mu}_c)^T \boldsymbol{\Sigma}_c^{-1} (\mathbf{x}-\boldsymbol{\mu}_c)$ |
-| **11** | **Decision Tree** (Phase 27) | `.pkl`, `.joblib` | ภูมิประเทศขั้นบันได 3 มิติ (3D Voxel Stepped Terraces) | เส้นทางเดินผ่านโหนดจริง (`decision_path` & `apply`) |
-| **12** | **Random Forest** (Phase 28) | `.pkl`, `.joblib` | ขั้นบันไดความละเอียดสูง + ลานโหวตต้นไม้ทั้งป่า (Consensus Arena) | คะแนนโหวตของ `estimators_` ทุกต้น + Tree Contributions |
-| **13** | **Extra Trees** (Phase 29) | `.pkl`, `.joblib` | ขั้นบันไดเฉลี่ยที่เรียบเนียนขึ้น + วงรัศมีความแปรปรวนของการสุ่มตัด | ค่าเฉลี่ยและส่วนเบี่ยงเบนมาตรฐานของคำตอบรายต้น |
-| **14** | **AdaBoost** (Phase 30) | `.pkl`, `.joblib` | ลำดับการแก้ไขคำตอบทีละขั้น (Staged Boosting Cascade) | การสะสมคะแนนผ่าน `staged_predict_proba(X)` |
-| **15** | **Scikit-Learn GBM** (Phase 31) | `.pkl`, `.joblib` | พื้นผิวการสะสมค่า Residual (Additive Residual Terrain) | การไต่ระดับ Log-Odds / Residual ทีละ Stage |
-| **16** | **HistGradientBoosting** (Phase 32) | `.pkl`, `.joblib` | ขอบเขตถังข้อมูล 255 ถัง (3D Quantized Histogram Bin Grid) | ดัชนีถังข้อมูล `_bin_mapper` + Fast Tree Attribution |
-| **17** | **XGBoost** (Phase 33) | `.pkl`, `.json`, `.ubj` | ภูมิประเทศขั้นบันได XGBoost + ลูกศรแรงผลัก TreeSHAP | C++ Native `pred_contribs=True` & `pred_leaf=True` |
-| **18** | **LightGBM** (Phase 34) | `.pkl`, `.txt`, `.model` | ภูมิประเทศแตกกิ่งไม่สมมาตร (Asymmetric Leaf-wise Terrain) | C++ Native `pred_contrib=True` & `pred_leaf=True` |
-| **19** | **CatBoost** (Phase 35) | `.cbm`, `.pkl` | ตารางหมากรุกสมมาตร 3 มิติ (Symmetric Oblivious Grid) | Bitwise Leaf Index + C++ `ShapValues` + Native Cat Axis |
-| **20** | **MLP Neural Network** (Phase 36) | `.pkl`, `.joblib` | โครงข่ายประสาทลอยฟ้า 3 มิติ (3D Floating Synapse Brain) + Surface | Layer-by-Layer $A^{(l)}$, Dead ReLU & Input $\times$ Gradient |
-| **21** | **Sklearn `Pipeline` / `CT`** (Phase 37) | `.pkl`, `.joblib` | อุโมงค์แปลงข้อมูล + ฉาก 3D ของ Estimator ตัวสุดท้าย (Raw/Scaled) | Step-by-Step Value Tracer & Lineage Attribution Sum |
-| **22** | **ONNX Classical ML** (Phase 38) | `.onnx` | ปรับเปลี่ยนรูปทรง 3D อัตโนมัติตามโหนด `ai.onnx.ml` | Decompiled `TreeEnsemble` / `Linear` / `SVM` Attributes |
-| **23** | **ONNX Deep Learning** (Phase 39) | `.onnx` | พื้นผิว 3D คู่กับกลุ่มหมอกดาวในอวกาศแฝง (3D Latent PCA Manifold) | In-Memory Graph Output Injection + Latent SVD |
+| ลำดับ | ตระกูลโมเดล (Model Family) | ไฟล์ที่รองรับ | รูปทรงเรขาคณิต 3D (3D Stage) | รูปทรงเรขาคณิต 2D (2D Planar Mode) | กลไกสกัดคำอธิบายภายใน (Attribution) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **01** | **Linear Regression** (Phase 04) | `.pkl`, `.joblib` | ระนาบเอียง 3 มิติ (Tilted Hyperplane) | เส้นสมการ $w_1 x_1 + w_2 x_2 + b = 0$ + กราฟ 2D Slope | $\phi_j = \beta_j (x_j - \bar{x}_j)$ |
+| **02** | **Logistic Regression** (Phase 18) | `.pkl`, `.joblib` | คลื่น S-Curve / Softmax Terraces | เส้นแบ่งเขต $P=0.5$ + Sigmoid Density Gradient Heatmap | Log-Odds Contribution $\beta_{c,j} x_j$ |
+| **03** | **Ridge ($L_2$) & Lasso ($L_1$)** (Phase 19) | `.pkl`, `.joblib` | ระนาบเอียงพร้อมแกนที่ถูกตัดเป็นศูนย์ | เส้นแบ่งเขตขนานแกนฟีเจอร์ที่เป็นศูนย์ ($\emptyset$ Zero-Axis) | สัมประสิทธิ์ $\beta_j x_j$ + Sparsity Flag |
+| **04** | **ElasticNet** (Phase 20) | `.pkl`, `.joblib` | ระนาบผสม $L_1 + L_2$ | เส้นตรง Regularized Line + แถบวัดสัดส่วน $L_1/L_2$ | สัดส่วนการหดตัว $L_1$ vs $L_2$ |
+| **05** | **SGD Classifier / Regressor** (Phase 21) | `.pkl`, `.joblib` | ระนาบตัดสินใจ + ขอบเขต Margin | เส้น Decision Line + แถบทางเดิน Margin Corridor $w^Tx+b=\pm 1$ | ระยะห่างตั้งฉาก (`decision_function`) |
+| **06** | **KNN** (Phase 22) | `.pkl`, `.joblib` | ลูกบอลเรดาร์ 3D + ใยแมงมุม | วงกลมเรดาร์ 2D ($R_t = d_{(K)}$) + เส้นใยแสง 2D เชื่อม $K$ จุด | น้ำหนัก $w_k = 1 / (d_k + \epsilon)$ |
+| **07** | **SVM (`SVC`/`SVR`)** (Phase 23) | `.pkl`, `.joblib` | พื้นผิวอานม้า RBF Saddle + เสาแสง | เส้นโค้ง RBF Boundary + วงแหวนเพชร Support Vectors | แรงดึงดูด $\alpha_m y_m K(\mathbf{x}_m, \mathbf{x})$ |
+| **08** | **Gaussian Naive Bayes** (Phase 24) | `.pkl`, `.joblib` | ภูเขาระฆังคว่ำ 3D Bell Hills | วงรีความน่าจะเป็น Bivariate Normal ($1\sigma, 2\sigma, 3\sigma$) | ผลรวม Log-Likelihood $-\frac{(x_j - \mu_j)^2}{2\sigma_j^2}$ |
+| **09** | **Multinomial & Bernoulli NB** (Phase 25) | `.pkl`, `.joblib` | หอคอยแท่งสะสมความน่าจะเป็น 3D | แผนผังเส้นชั้นบันได Log-Likelihood ขั้นบันได 2 มิติ | คะแนน Evidence รายคำ $x_j \log P(f_j|c)$ |
+| **10** | **LDA & QDA** (Phase 26) | `.pkl`, `.joblib` | ทรงรีความแปรปรวนร่วม 3 มิติ | LDA: เส้นตรง / QDA: เส้นโค้งภาคตัดกรวย + วงรี $\boldsymbol{\Sigma}_c$ | Mahalanobis Distance $(\mathbf{x}-\boldsymbol{\mu})^T \boldsymbol{\Sigma}^{-1} (\mathbf{x}-\boldsymbol{\mu})$ |
+| **11** | **Decision Tree** (Phase 27) | `.pkl`, `.joblib` | ขั้นบันได 3D Voxel Terraces | เส้นตัดตั้งฉากแกน (Orthogonal Partitions) + ไฮไลต์กล่อง Leaf | เส้นทางเดินผ่านโหนด (`decision_path`) |
+| **12** | **Random Forest** (Phase 28) | `.pkl`, `.joblib` | ขั้นบันไดละเอียด + ลานโหวต 3D | เส้นตัดซ้อนทับกันหลายต้น + แถบสี Consensus Heatmap | คะแนนโหวตรายต้น + Tree Contributions |
+| **13** | **Extra Trees** (Phase 29) | `.pkl`, `.joblib` | ขั้นบันไดเฉลี่ย + วงรัศมีความแปรปรวน | เส้นตัดสุ่มพร้อมแถบสีความน่าจะเป็นที่เรียบเนียนขึ้น | ค่าเฉลี่ยและส่วนเบี่ยงเบนมาตรฐาน |
+| **14** | **AdaBoost** (Phase 30) | `.pkl`, `.joblib` | ลำดับการแก้คำตอบทีละขั้น Cascade | สไลเดอร์ดูวิวัฒนาการเส้นแบ่งเขตตามลำดับ Weak Learner | การสะสมคะแนน `staged_predict_proba` |
+| **15** | **Scikit-Learn GBM** (Phase 31) | `.pkl`, `.joblib` | พื้นผิวการสะสมค่า Residual 3D | แผนที่การสะสมคะแนน Log-Odds / Residual 2 มิติ | การไต่ระดับ Residual ทีละ Stage |
+| **16** | **HistGradientBoosting** (Phase 32) | `.pkl`, `.joblib` | ขอบเขตถังข้อมูล 3D Histogram Bins | เส้นกริดแสดงขอบเขตถังข้อมูล 255 Bins ตัดกับ Boundary | ดัชนีถังข้อมูล `_bin_mapper` |
+| **17** | **XGBoost** (Phase 33) | `.pkl`, `.json`, `.ubj` | ภูมิประเทศขั้นบันได + แรงผลัก 3D | รูปหลายเหลี่ยมใบไม้ + ลูกศรแรงผลัก 2D TreeSHAP Vectors | C++ `pred_contribs` & `pred_leaf` |
+| **18** | **LightGBM** (Phase 34) | `.pkl`, `.txt`, `.model` | ภูมิประเทศแตกกิ่งไม่สมมาตร 3D | ขอบเขตใบไม้รูปทรงอิสระ (Leaf-wise Polygons 2D) | C++ Native TreeSHAP |
+| **19** | **CatBoost** (Phase 35) | `.cbm`, `.pkl` | ตารางหมากรุกสมมาตร 3 มิติ | ตารางหมากรุกสมมาตร 2 มิติ (2D Oblivious Grid) | Bitwise Leaf Index + C++ SHAP |
+| **20** | **MLP Neural Network** (Phase 36) | `.pkl`, `.joblib` | โครงข่ายประสาทลอยฟ้า 3 มิติ | ระนาบตัดของ Hidden Neurons + เส้นแบ่งเขตโค้งมนเรียบ | Layer Activation $A^{(l)}$ & Gradients |
+| **21** | **Sklearn `Pipeline`** (Phase 37) | `.pkl`, `.joblib` | อุโมงค์แปลงข้อมูล 3 มิติ | ตัวสลับมุมมอง [Raw Space] $\leftrightarrow$ [Scaled Space] 2D | Step-by-Step Value Tracer |
+| **22** | **ONNX Classical ML** (Phase 38) | `.onnx` | ปรับเปลี่ยนรูปทรงตามโหนด `ai.onnx.ml` | Universal 2D Contour Map ตามชนิดโหนด ONNX | Decompiled Operators & Attributes |
+| **23** | **ONNX Deep Learning** (Phase 39) | `.onnx` | พื้นผิว 3D + กลุ่มหมอกดาว Latent | ระนาบฉายภาพแฝง 2D Latent SVD/PCA Projection Plane | In-Memory Graph Output Injection |
 
 ---
 
