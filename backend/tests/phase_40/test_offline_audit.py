@@ -17,6 +17,11 @@ BANNED_PATTERNS = [
     re.compile(r"unpkg\.com", re.IGNORECASE),
 ]
 
+# Phase 48 — the SVG XML namespace URI is a never-dereferenced identifier
+# (required by the SVG spec for standalone .svg files to render); it is not
+# a network fetch, so the offline audit exempts exactly this string.
+SVG_XMLNS_EXEMPT = "http://www.w3.org/2000/svg"
+
 SCAN_EXTENSIONS = {".py", ".ts", ".tsx", ".html", ".css"}
 
 
@@ -41,6 +46,9 @@ def test_no_external_network_references_in_source():
                 snippet = match.group(0)
                 # Allow documentation comments mentioning CDN names as warnings.
                 if "offline" in text[max(0, match.start() - 120):match.start()].lower():
+                    continue
+                # Phase 48 — SVG namespace identifier, never fetched.
+                if text.startswith(SVG_XMLNS_EXEMPT, match.start()):
                     continue
                 violations.append(f"{path.relative_to(REPO_ROOT)}: {snippet}")
     assert not violations, "external network refs found:\n" + "\n".join(violations[:20])

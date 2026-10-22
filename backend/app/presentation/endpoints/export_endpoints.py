@@ -79,6 +79,69 @@ async def export_enriched_table(
     )
 
 
+@router.post("/svg-2d", summary="Phase 48: publication-quality 2D decision-boundary SVG")
+async def export_svg_2d(payload: dict[str, Any]):
+    """Build a standalone offline SVG from 2D boundary segments + points."""
+    from fastapi.responses import Response as _Response
+
+    from app.domains.export_reporting.svg_export_service import SvgExportGenerator
+
+    def _clean_segments(raw: Any) -> list[list[float]]:
+        out: list[list[float]] = []
+        if not isinstance(raw, list):
+            return out
+        for seg in raw[:50_000]:
+            try:
+                vals = [float(v) for v in list(seg)[:4]]
+            except (TypeError, ValueError):
+                continue
+            if len(vals) == 4:
+                out.append(vals)
+        return out
+
+    def _clean_points(raw: Any) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        if not isinstance(raw, list):
+            return out
+        for pt in raw[:20_000]:
+            if not isinstance(pt, dict):
+                continue
+            try:
+                x = float(pt.get("x", 0.0))
+                y = float(pt.get("y", 0.0))
+            except (TypeError, ValueError):
+                continue
+            try:
+                actual = int(pt.get("actual", 0) or 0)
+            except (TypeError, ValueError):
+                actual = 0
+            out.append({"x": x, "y": y, "actual": actual})
+        return out
+
+    disagreement = payload.get("disagreement_pct")
+    try:
+        disagreement_f = float(disagreement) if disagreement is not None else None
+    except (TypeError, ValueError):
+        disagreement_f = None
+    svg = SvgExportGenerator.generate_svg(
+        x_label=str(payload.get("x_label", "X")),
+        y_label=str(payload.get("y_label", "Y")),
+        boundary_segments=_clean_segments(payload.get("boundary_segments")),
+        data_points=_clean_points(payload.get("data_points")),
+        width=int(payload.get("width", 1200) or 1200),
+        height=int(payload.get("height", 900) or 900),
+        theme=str(payload.get("theme", "precision-dark")),
+        title=str(payload.get("title", "2D Decision Boundary")),
+        disagreement_pct=disagreement_f,
+    )
+    safe = "".join(c if (c.isalnum() or c in ("-", "_")) else "_" for c in str(payload.get("title", "decision-2d")))[:40] or "decision-2d"
+    return _Response(
+        content=svg.encode("utf-8"),
+        media_type="image/svg+xml",
+        headers={"Content-Disposition": f'attachment; filename="{safe}.svg"'},
+    )
+
+
 @router.post("/enriched-table/preview", summary="Phase 16: preview first rows of an export")
 async def preview_enriched_table(
     body: ExportEnrichedTableRequest,
