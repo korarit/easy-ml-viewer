@@ -17,6 +17,7 @@ import { DiscriminantInspectorPanel } from './components/DiscriminantInspectorPa
 import { TreeInspectorPanel } from './components/TreeInspectorPanel';
 import { ForestInspectorPanel } from './components/ForestInspectorPanel';
 import { ExtraTreesInspectorPanel } from './components/ExtraTreesInspectorPanel';
+import { AdaBoostInspectorPanel } from './components/AdaBoostInspectorPanel';
 import { useModelStore } from './store/useModelStore';
 import { useSystemStore } from '../../core/store/useSystemStore';
 
@@ -78,6 +79,7 @@ export function ModelStepView() {
       <TreeInspectorPanel />
       <ForestInspectorPanel />
       <ExtraTreesInspectorPanel />
+      <AdaBoostInspectorPanel />
 
       <div className="flex justify-between">
         <button
