@@ -536,7 +536,13 @@ class _ResolvedDeepSession:
 
 
 def _try_relax_static_batch(working: Any, input_name: str) -> None:
-    """In-memory ``dim_param = "batch_size"`` relaxation (§2.3 attempt 1)."""
+    """In-memory ``dim_param = "batch_size"`` relaxation (§2.3 attempt 1).
+
+    Patches dim 0 of the model input *and* every inferred intermediate
+    ``value_info`` / ``output`` entry so ORT no longer validates probed
+    tensors against the baked ``1`` (silences ``VerifyOutputSizes``
+    warnings once the input itself becomes symbolic).
+    """
     try:
         for inp in list(working.graph.input):
             if str(inp.name) != str(input_name):
@@ -547,15 +553,19 @@ def _try_relax_static_batch(working: Any, input_name: str) -> None:
                     dims[0].dim_param = "batch_size"
                 except (AttributeError, TypeError, ValueError):
                     pass
-        for info in list(working.graph.value_info):
-            if str(info.name) != str(input_name):
-                continue
-            try:
-                dims = info.type.tensor_type.shape.dim
+        containers = [list(working.graph.value_info), list(working.graph.output)]
+        for entries in containers:
+            for info in entries:
+                try:
+                    dims = info.type.tensor_type.shape.dim
+                except (AttributeError, TypeError, ValueError):
+                    continue
                 if len(dims) >= 1:
-                    dims[0].dim_param = "batch_size"
-            except (AttributeError, TypeError, ValueError):
-                pass
+                    try:
+                        if not str(getattr(dims[0], "dim_param", "") or ""):
+                            dims[0].dim_param = "batch_size"
+                    except (AttributeError, TypeError, ValueError):
+                        pass
     except (AttributeError, TypeError):
         pass
 
