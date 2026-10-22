@@ -153,6 +153,35 @@ def _clip_non_negative(X: np.ndarray, variant: str) -> np.ndarray:
     return np.maximum(X, 0.0)
 
 
+def _category_caps(estimator: Any) -> list[int]:
+    """Per-feature category counts ``K_j`` for ``CategoricalNB`` (empty if n/a)."""
+    caps: list[int] = []
+    for tab in list(getattr(estimator, "feature_log_prob_", [])):
+        arr = np.asarray(tab)
+        caps.append(int(arr.shape[1]) if arr.ndim == 2 else 1)
+    return caps
+
+
+def _to_category_ints(X: np.ndarray, caps: list[int]) -> tuple[np.ndarray, bool]:
+    """Truncate floats to ints (native ``dtype='int'`` cast) and clamp unseen.
+
+    Returns ``(X_int, clamped_flag)``. Mirrors ``CategoricalNB._check_X``:
+    non-negative + C-style truncation, then blueprint edge #3 clamps
+    categories above ``K_j - 1`` instead of raising ``IndexError``.
+    """
+    X_nonneg = np.maximum(np.asarray(X, dtype=np.float64), 0.0)
+    X_int = X_nonneg.astype(np.int64)  # truncation toward zero == native cast
+    clamped = False
+    for j, kj in enumerate(caps):
+        if j >= X_int.shape[1]:
+            break
+        over = X_int[:, j] > max(kj - 1, 0)
+        if np.any(over):
+            clamped = True
+            X_int[:, j] = np.clip(X_int[:, j], 0, max(kj - 1, 0))
+    return X_int, clamped
+
+
 def _joint_native(
     estimator: Any, X_q: np.ndarray, manual: np.ndarray
 ) -> np.ndarray:
@@ -188,21 +217,21 @@ def _manual_joint_and_vectors(
     if variant == "categorical":
         tables = list(getattr(estimator, "feature_log_prob_", []))
         d = len(tables)
-        X_int = np.clip(np.rint(np.asarray(X_q, dtype=np.float64)), 0, None).astype(np.int64)
-        if X_int.shape[1] != d and d > 0:
-            width = max(d, int(X_int.shape[1]))
-            padded = np.zeros((r, width), dtype=np.int64)
-            padded[:, : X_int.shape[1]] = X_int
+        caps = _category_caps(estimator)
+        X_int, clamped_flag = _to_category_ints(X_q[:, :d] if X_q.shape[1] >= d and d > 0 else X_q, caps)
+        tele["unseen_category_clamped"] = bool(clamped_flag)
+        if d == 0:
+            joint = np.tile(log_priors[None, :], (r, 1))
+            return np.where(np.isfinite(joint), joint, LOG_FLOOR), np.zeros((r, n_classes, 1)), tele
+        if X_int.shape[1] != d:
+            padded = np.zeros((r, d), dtype=np.int64)
+            take = min(d, X_int.shape[1])
+            padded[:, :take] = X_int[:, :take]
             X_int = padded
-        vecs = np.zeros((r, n_classes, max(d, 1)), dtype=np.float64)
+        vecs = np.zeros((r, n_classes, d), dtype=np.float64)
         for j, tab in enumerate(tables):
             tab = np.asarray(tab, dtype=np.float64)
-            kj = int(tab.shape[1]) if tab.ndim == 2 else 1
-            col = np.clip(X_int[:, j] if j < X_int.shape[1] else 0, 0, max(kj - 1, 0))
-            if np.any(
-                (X_int[:, j] if j < X_int.shape[1] else 0) > max(kj - 1, 0)
-            ) or np.any(X_int[:, j] < 0 if j < X_int.shape[1] else False):
-                tele["unseen_category_clamped"] = True
+            col = X_int[:, j]
             for k in range(n_classes):
                 row = tab[k] if k < tab.shape[0] else tab[-1]
                 vecs[:, k, j] = row[col]
@@ -294,7 +323,7 @@ class DiscreteNBAdapter(BaseModelAdapter):
         variant = _variant_of(est)
         query = _clip_non_negative(np.asarray(X_in, dtype=np.float64), variant)
         if variant == "categorical":
-            query = np.clip(np.rint(query), 0, None)
+            query = _to_category_ints(query, _category_caps(est))[0].astype(np.float64)
         try:
             preds = np.asarray(model_obj.predict(np.asarray(X_in))).ravel()
         except (ValueError, AttributeError, TypeError, IndexError):
@@ -364,8 +393,10 @@ class DiscreteNBAdapter(BaseModelAdapter):
         X_native = _as_dense_float32(X_float32)
         X_q_raw = _transform_for_query(model_obj, X_float32)
         X_q = _clip_non_negative(np.asarray(X_q_raw, dtype=np.float64), variant)
+        pre_clamped = False
         if variant == "categorical":
-            X_q = np.clip(np.rint(X_q), 0, None)
+            X_q, pre_clamped = _to_category_ints(X_q, _category_caps(estimator))
+            X_q = np.asarray(X_q, dtype=np.float64)
 
         valid = [r for r in row_indices if 0 <= r < X_native.shape[0]]
         Q = (
@@ -374,6 +405,9 @@ class DiscreteNBAdapter(BaseModelAdapter):
             else np.zeros((0, max(int(X_q.shape[1]), 1)), dtype=np.float64)
         )
         manual_joint, vecs, tele = _manual_joint_and_vectors(estimator, Q, variant)
+        tele["unseen_category_clamped"] = bool(
+            tele.get("unseen_category_clamped", False) or pre_clamped
+        )
         joint = _joint_native(estimator, Q, manual_joint)
         post = _posteriors(joint)
         try:
@@ -532,7 +566,7 @@ class DiscreteNBAdapter(BaseModelAdapter):
         grid_q = _transform_for_query(model_obj, grid)
         grid_use = _clip_non_negative(np.asarray(grid_q, dtype=np.float64), variant)
         if variant == "categorical":
-            grid_use = np.clip(np.rint(grid_use), 0, None)
+            grid_use = _to_category_ints(grid_use, _category_caps(estimator))[0].astype(np.float64)
         try:
             probas = np.asarray(model_obj.predict_proba(np.asarray(grid_use, dtype=np.float32)))
         except (ValueError, AttributeError, TypeError, IndexError):
