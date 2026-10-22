@@ -36,6 +36,13 @@ try:  # Phase 43 — optional distance/kernel overlays (same fail-safe contract)
 except ImportError:  # pragma: no cover - extractor module missing
     Distance2DExtractor = None  # type: ignore[assignment,misc]
 
+try:  # Phase 44 — optional probabilistic/discriminant overlays (same contract).
+    from app.domains.model_engine.adapters.probabilistic.probabilistic_2d_extractor import (
+        Probabilistic2DExtractor,
+    )
+except ImportError:  # pragma: no cover - extractor module missing
+    Probabilistic2DExtractor = None  # type: ignore[assignment,misc]
+
 #: Batch size shared with the Phase-09 surface path (memory budget §5.1).
 PREDICT_CHUNK_SIZE = 2_500
 
@@ -112,6 +119,11 @@ class Contour2DResponse(BaseModel):
     knn_2d: dict[str, Any] | None = Field(
         default=None,
         description="Static KNN descriptor (k, weights, metric) for the radar overlay",
+    )
+    # Phase 44 — probabilistic & discriminant overlays (None when N/A).
+    probabilistic_2d: dict[str, Any] | None = Field(
+        default=None,
+        description="Gaussian ellipses / LDA line / QDA conic / discrete-NB steps",
     )
     computation_time_ms: float = 0.0
 
@@ -441,6 +453,26 @@ class Contour2DGenerator:
             except Exception:
                 knn_2d = None
 
+        # Phase 44 — probabilistic/discriminant overlays (fail-safe, < 40 KB).
+        probabilistic_2d: dict[str, Any] | None = None
+        if Probabilistic2DExtractor is not None:
+            try:
+                geometry = Probabilistic2DExtractor.extract_probabilistic_2d_geometry(
+                    model_obj=model_obj,
+                    X=ref,
+                    x_feature_idx=int(x_feature_idx),
+                    y_feature_idx=int(y_feature_idx),
+                    x_feature_name=x_feature_name,
+                    y_feature_name=y_feature_name,
+                    x_range_raw=(float(x_min), float(x_max)),
+                    y_range_raw=(float(y_min), float(y_max)),
+                    x_scale=x_scale,
+                    y_scale=y_scale,
+                )
+                probabilistic_2d = geometry.model_dump(mode="json") if geometry is not None else None
+            except Exception:
+                probabilistic_2d = None
+
         if prediction_task == "classification":
             proba = _chunked_proba_matrix(model_obj, final_est, grid)
             if proba is None:
@@ -558,5 +590,6 @@ class Contour2DGenerator:
             linear_2d=linear_2d,
             svm_2d=svm_2d,
             knn_2d=knn_2d,
+            probabilistic_2d=probabilistic_2d,
             computation_time_ms=elapsed_ms,
         )
