@@ -14,6 +14,12 @@ from app.application.mlv_recording_orchestrator import (
     header_to_response,
     prebaked_to_response,
 )
+from app.core.binary_codec import MlvFormatError as _CodecError
+from app.core.binary_codec import decode_mlv_package
+from app.domains.recording_mlv.dual_compare_service import (
+    compare_decoded_payloads,
+    summary_to_response,
+)
 
 router = APIRouter(prefix="/recordings", tags=["recording-mlv"])
 
@@ -80,6 +86,37 @@ async def rebake_mlv_bookmarks(
         media_type="application/octet-stream",
         headers={"Content-Disposition": f'attachment; filename="{session_id}_updated.mlv"'},
     )
+
+
+@router.post("/compare", summary="Phase 40: synchronized dual .mlv comparison")
+async def compare_mlv_recordings(
+    file_a: UploadFile,
+    file_b: UploadFile,
+) -> dict[str, Any]:
+    """Compare two `.mlv` files frame-by-frame (truncates to N_min).
+
+    Returns disagreement indices, per-frame divergence, and agreement
+    rate. Rejects non-`.mlv` uploads with MLV_INVALID_MAGIC.
+    """
+    from app.core.exceptions import DomainException as _DE
+
+    raw_a = await file_a.read()
+    raw_b = await file_b.read()
+    if not raw_a or not raw_b:
+        raise _DE(code="MLV_EMPTY_FILE", message="Both .mlv files must be non-empty", http_status=400)
+    try:
+        payload_a = decode_mlv_package(raw_a)
+    except _CodecError as exc:
+        raise _DE(code="MLV_INVALID_MAGIC", message=f"file_a is not a valid .mlv: {exc}", http_status=400) from exc
+    try:
+        payload_b = decode_mlv_package(raw_b)
+    except _CodecError as exc:
+        raise _DE(code="MLV_INVALID_MAGIC", message=f"file_b is not a valid .mlv: {exc}", http_status=400) from exc
+    summary = compare_decoded_payloads(payload_a, payload_b)
+    response = summary_to_response(summary)
+    response["file_a_name"] = file_a.filename or "model_a.mlv"
+    response["file_b_name"] = file_b.filename or "model_b.mlv"
+    return response
 
 
 @router.post("/estimate-size", summary="Phase 15: estimated .mlv byte size")
