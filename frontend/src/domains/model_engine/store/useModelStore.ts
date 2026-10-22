@@ -74,6 +74,7 @@ export const VISUAL_3D_LABELS: Record<string, string> = {
   voronoi_knn_proximity: 'Voronoi KNN Proximity',
   svm_margin_tube: 'SVM Margin Tube',
   gaussian_ellipsoid_domes: 'Gaussian Ellipsoid Domes',
+  discrete_nb_towers: 'Discrete NB Probability Towers',
   neural_morphing_manifold: 'Neural Morphing Manifold',
   cluster_centroid_voronoi: 'Cluster Centroid Voronoi',
   anomaly_isolation_depth: 'Anomaly Isolation Depth',
