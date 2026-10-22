@@ -255,6 +255,27 @@ class UniversalSchemaDetector:
             if meta.is_classifier and meta.classes:
                 classes = [v for v in meta.classes]
             return ModelSchema(n_features_in=meta.n_features, features=features, classes=classes)
+        # Generic tabular graphs: skl2onnx KNN / NaiveBayes / preprocessing chains
+        # (TopK distance, log-likelihood, Scaler/Encoder prefixes — no estimator op).
+        from app.domains.model_engine.adapters.neural_onnx.onnx_tabular import (  # noqa: PLC0415
+            inspect_onnx_tabular,
+        )
+
+        tab = inspect_onnx_tabular(proto)
+        if tab.operator_family in ("knn", "naive_bayes", "tabular_preprocessing", "tabular_generic") and tab.n_features >= 1:
+            features = [
+                FeatureRequirement(
+                    index=i,
+                    name=name,
+                    expected_dtype="float32",
+                    is_auto_generated_name=True,
+                )
+                for i, name in enumerate(tab.feature_names)
+            ]
+            tab_classes: list[str | int | float] | None = None
+            if tab.is_classifier and tab.classes:
+                tab_classes = [v for v in tab.classes]
+            return ModelSchema(n_features_in=tab.n_features, features=features, classes=tab_classes)
         # Phase 39: deep neural graphs (Gemm/MatMul depth, no ai.onnx.ml).
         from app.domains.model_engine.adapters.neural_onnx.onnx_deep import (  # noqa: PLC0415
             inspect_onnx_deep,

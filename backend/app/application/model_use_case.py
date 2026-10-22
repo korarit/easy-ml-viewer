@@ -42,6 +42,8 @@ from app.domains.model_engine.adapters.neural_onnx import mlp_adapter as _mlp_ad
 from app.domains.model_engine.adapters.neural_onnx import pipeline_adapter as _pipeline_adapter  # noqa: F401,F841
 from app.domains.model_engine.adapters.neural_onnx import onnx_classical as _onnx_classical_adapter  # noqa: F401
 from app.domains.model_engine.adapters.neural_onnx import onnx_deep as _onnx_deep_adapter  # noqa: F401
+from app.domains.model_engine.adapters.neural_onnx import onnx_tabular as _onnx_tabular_adapter  # noqa: F401
+from app.domains.model_engine.adapters import generic_fallback as _generic_fallback_adapter  # noqa: F401
 
 # Phase 33-35: native booster formats load straight into xgb.Booster / lgb.Booster / CatBoost .cbm.
 # Phase 38: .onnx loads via onnx.load into a ModelProto graph.
@@ -220,23 +222,46 @@ class ModelIngestUseCase:
                     raise ValueError("not a classical onnx graph")
             except (ValueError, TypeError, AttributeError):
                 try:
-                    from app.domains.model_engine.adapters.neural_onnx.onnx_deep import (  # noqa: PLC0415
-                        inspect_onnx_deep,
+                    from app.domains.model_engine.adapters.neural_onnx.onnx_tabular import (  # noqa: PLC0415
+                        inspect_onnx_tabular,
                     )
 
-                    deep_meta = inspect_onnx_deep(obj)
+                    tab_meta = inspect_onnx_tabular(obj)
+                    if tab_meta.operator_family not in (
+                        "knn",
+                        "naive_bayes",
+                        "tabular_preprocessing",
+                        "tabular_generic",
+                    ):
+                        raise ValueError("not a tabular onnx graph")
                     raw_params = {
-                        "detected_operator": "Gemm/MatMul DeepNet",
-                        "operator_family": "deep_mlp",
-                        "opset_version": deep_meta.opset_version,
-                        "n_probed_layers": deep_meta.n_hidden_blocks,
-                        "penultimate_layer": deep_meta.penultimate_name,
-                        "is_static_batch": deep_meta.is_static_batch,
+                        "detected_operator": tab_meta.detected_operator,
+                        "operator_family": tab_meta.operator_family,
+                        "opset_version": tab_meta.opset_version,
+                        "has_zipmap": tab_meta.has_zipmap,
+                        "n_onnx_nodes": len(tab_meta.node_chain),
                     }
-                    onnx_step = "Gemm/MatMul DeepNet"
+                    onnx_step = tab_meta.detected_operator
                     onnx_meta = None
                 except (ValueError, TypeError, AttributeError):
-                    raw_params = {}
+                    try:
+                        from app.domains.model_engine.adapters.neural_onnx.onnx_deep import (  # noqa: PLC0415
+                            inspect_onnx_deep,
+                        )
+
+                        deep_meta = inspect_onnx_deep(obj)
+                        raw_params = {
+                            "detected_operator": "Gemm/MatMul DeepNet",
+                            "operator_family": "deep_mlp",
+                            "opset_version": deep_meta.opset_version,
+                            "n_probed_layers": deep_meta.n_hidden_blocks,
+                            "penultimate_layer": deep_meta.penultimate_name,
+                            "is_static_batch": deep_meta.is_static_batch,
+                        }
+                        onnx_step = "Gemm/MatMul DeepNet"
+                        onnx_meta = None
+                    except (ValueError, TypeError, AttributeError):
+                        raw_params = {}
             task_value = adapter.task_type.value
             metadata = ModelMetadata(
                 model_id=model_id,
