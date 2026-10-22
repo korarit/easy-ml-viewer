@@ -24,6 +24,7 @@ import { XgboostInspectorPanel } from './components/XgboostInspectorPanel';
 import { LightgbmInspectorPanel } from './components/LightgbmInspectorPanel';
 import { CatBoostInspectorPanel } from './components/CatBoostInspectorPanel';
 import { MlpInspectorPanel } from './components/MlpInspectorPanel';
+import { PipelineInspectorPanel } from './components/PipelineInspectorPanel';
 import { useModelStore } from './store/useModelStore';
 import { useSystemStore } from '../../core/store/useSystemStore';
 
@@ -92,6 +93,7 @@ export function ModelStepView() {
       <LightgbmInspectorPanel />
       <CatBoostInspectorPanel />
       <MlpInspectorPanel />
+      <PipelineInspectorPanel />
 
       <div className="flex justify-between">
         <button
