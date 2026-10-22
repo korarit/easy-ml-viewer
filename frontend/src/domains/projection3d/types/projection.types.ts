@@ -64,6 +64,71 @@ export interface Linear2DPayload {
   lines: Linear2DLinePayload[];
 }
 
+/** Phase 44 — one class ellipse in world coords (mirrors ClassEllipse2D). */
+export interface ClassEllipse2D {
+  classIndex: number;
+  label: string | number | null;
+  meanRaw: [number, number];
+  stdRaw: [number, number];
+  rotationRad: number;
+  centerWorld: [number, number];
+  /** 1-sigma radii in world units — multiply by k for the k-sigma ring. */
+  radiiWorld1Sigma: [number, number];
+  prior: number | null;
+}
+
+/** Phase 44 — exact LDA binary line (mirrors DiscriminantLine2D). */
+export interface DiscriminantLine2D {
+  segmentRaw: [number, number, number, number] | null;
+  segmentWorld: [number, number, number, number] | null;
+  w1: number;
+  w2: number;
+  bEff: number;
+  label: string;
+}
+
+/** Phase 44 — exact QDA binary conic (mirrors Conic2D). */
+export interface QdaConic2D {
+  kind: string;
+  conicType: 'hyperbola' | 'ellipse' | 'parabola' | 'degenerate' | string;
+  coefficientsRaw: { A: number; B: number; C: number; D: number; E: number; F: number };
+  classA: number;
+  classB: number;
+  segmentsWorld: Array<[number, number, number, number]>;
+  segmentsTruncated: boolean;
+  label: string;
+}
+
+/** Phase 44 — discrete-NB step legend (mirrors DiscreteNb2D). */
+export interface DiscreteNb2D {
+  variant: string;
+  algorithm: string;
+  alpha: number | null;
+  binarize: number | null;
+  axisLogProb: number[][];
+  classes: Array<string | number>;
+  formula: string;
+}
+
+/** Phase 44 — probabilistic overlay payload (mirrors Probabilistic2DGeometry). */
+export interface Probabilistic2DPayload {
+  family: 'gnb' | 'discrete_nb' | 'lda' | 'qda' | string;
+  algorithm: string;
+  xFeature: string;
+  yFeature: string;
+  xFeatureIdx: number;
+  yFeatureIdx: number;
+  nClasses: number;
+  classes: Array<string | number>;
+  ellipses: ClassEllipse2D[];
+  ellipsesTruncated: boolean;
+  isCovarianceApproximated: boolean;
+  discriminantLine: DiscriminantLine2D | null;
+  conic: QdaConic2D | null;
+  discrete: DiscreteNb2D | null;
+  formula: string;
+}
+
 /** Phase 43 — one support-vector halo (mirrors SvmHalo2D + world coords). */
 export interface SvmHalo2D {
   trainIndex: number;
@@ -158,6 +223,8 @@ export interface Contour2DPayload {
   svm2d: Svm2DPayload | null;
   /** Phase 43 — static KNN descriptor; null when the model is not KNN. */
   knn2d: KnnStatic2D | null;
+  /** Phase 44 — probabilistic ellipses / LDA line / QDA conic; null when N/A. */
+  probabilistic2d: Probabilistic2DPayload | null;
   computationTimeMs: number;
 }
 

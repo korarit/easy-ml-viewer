@@ -54,6 +54,10 @@ interface Stage3DState {
   showSpiderLines: boolean;
   showSvHalos: boolean;
   showSvmMargins: boolean;
+  /** Phase 44 — probabilistic & discriminant overlay visibility. */
+  showProbEllipses: boolean;
+  showProbCentroids: boolean;
+  showConicBoundary: boolean;
   isLoading: boolean;
   stageError: string | null;
   contextLost: boolean;
@@ -75,6 +79,9 @@ interface Stage3DState {
   setShowSpiderLines: (v: boolean) => void;
   setShowSvHalos: (v: boolean) => void;
   setShowSvmMargins: (v: boolean) => void;
+  setShowProbEllipses: (v: boolean) => void;
+  setShowProbCentroids: (v: boolean) => void;
+  setShowConicBoundary: (v: boolean) => void;
   setActiveFrameIndex: (frameIdx: number) => void;
   setAxes: (xIdx: number, yIdx: number) => Promise<void>;
   setSurfaceResolution: (res: number) => Promise<void>;
@@ -145,6 +152,9 @@ export const useStage3DStore = create<Stage3DState>((set, get) => ({
   showSpiderLines: true,
   showSvHalos: true,
   showSvmMargins: true,
+  showProbEllipses: true,
+  showProbCentroids: true,
+  showConicBoundary: true,
   isLoading: false,
   stageError: null,
   contextLost: false,
@@ -181,6 +191,12 @@ export const useStage3DStore = create<Stage3DState>((set, get) => ({
   setShowSvHalos: (v) => set({ showSvHalos: v }),
 
   setShowSvmMargins: (v) => set({ showSvmMargins: v }),
+
+  setShowProbEllipses: (v) => set({ showProbEllipses: v }),
+
+  setShowProbCentroids: (v) => set({ showProbCentroids: v }),
+
+  setShowConicBoundary: (v) => set({ showConicBoundary: v }),
 
   setActiveFrameIndex: (frameIdx) => {
     const { points } = get();

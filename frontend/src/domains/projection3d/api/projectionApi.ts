@@ -129,6 +129,56 @@ interface Contour2DResponse {
     is_radius_model: boolean;
     radius: number | null;
   } | null;
+  probabilistic_2d: {
+    family: string;
+    algorithm: string;
+    x_feature: string;
+    y_feature: string;
+    x_feature_idx: number;
+    y_feature_idx: number;
+    n_classes: number;
+    classes: Array<string | number>;
+    ellipses: Array<{
+      class_index: number;
+      label: string | number | null;
+      mean_raw: [number, number];
+      std_raw: [number, number];
+      rotation_rad: number;
+      center_world: [number, number];
+      radii_world_1sigma: [number, number];
+      prior: number | null;
+    }>;
+    ellipses_truncated: boolean;
+    is_covariance_approximated: boolean;
+    discriminant_line: {
+      segment_raw: [number, number, number, number] | null;
+      segment_world: [number, number, number, number] | null;
+      w1: number;
+      w2: number;
+      b_eff: number;
+      label: string;
+    } | null;
+    conic: {
+      kind: string;
+      conic_type: string;
+      coefficients_raw: { A: number; B: number; C: number; D: number; E: number; F: number };
+      class_a: number;
+      class_b: number;
+      segments_world: Array<[number, number, number, number]>;
+      segments_truncated: boolean;
+      label: string;
+    } | null;
+    discrete: {
+      variant: string;
+      algorithm: string;
+      alpha: number | null;
+      binarize: number | null;
+      axis_log_prob: number[][];
+      classes: Array<string | number>;
+      formula: string;
+    } | null;
+    formula: string;
+  } | null;
   computation_time_ms: number;
 }
 
@@ -255,6 +305,64 @@ export async function fetchContour2D(
           metric: data.knn_2d.metric,
           isRadiusModel: data.knn_2d.is_radius_model,
           radius: data.knn_2d.radius,
+        }
+      : null,
+    probabilistic2d: data.probabilistic_2d
+      ? {
+          family: data.probabilistic_2d.family,
+          algorithm: data.probabilistic_2d.algorithm,
+          xFeature: data.probabilistic_2d.x_feature,
+          yFeature: data.probabilistic_2d.y_feature,
+          xFeatureIdx: data.probabilistic_2d.x_feature_idx,
+          yFeatureIdx: data.probabilistic_2d.y_feature_idx,
+          nClasses: data.probabilistic_2d.n_classes,
+          classes: data.probabilistic_2d.classes,
+          ellipses: data.probabilistic_2d.ellipses.map((e) => ({
+            classIndex: e.class_index,
+            label: e.label,
+            meanRaw: e.mean_raw,
+            stdRaw: e.std_raw,
+            rotationRad: e.rotation_rad,
+            centerWorld: e.center_world,
+            radiiWorld1Sigma: e.radii_world_1sigma,
+            prior: e.prior,
+          })),
+          ellipsesTruncated: data.probabilistic_2d.ellipses_truncated,
+          isCovarianceApproximated: data.probabilistic_2d.is_covariance_approximated,
+          discriminantLine: data.probabilistic_2d.discriminant_line
+            ? {
+                segmentRaw: data.probabilistic_2d.discriminant_line.segment_raw,
+                segmentWorld: data.probabilistic_2d.discriminant_line.segment_world,
+                w1: data.probabilistic_2d.discriminant_line.w1,
+                w2: data.probabilistic_2d.discriminant_line.w2,
+                bEff: data.probabilistic_2d.discriminant_line.b_eff,
+                label: data.probabilistic_2d.discriminant_line.label,
+              }
+            : null,
+          conic: data.probabilistic_2d.conic
+            ? {
+                kind: data.probabilistic_2d.conic.kind,
+                conicType: data.probabilistic_2d.conic.conic_type,
+                coefficientsRaw: data.probabilistic_2d.conic.coefficients_raw,
+                classA: data.probabilistic_2d.conic.class_a,
+                classB: data.probabilistic_2d.conic.class_b,
+                segmentsWorld: data.probabilistic_2d.conic.segments_world,
+                segmentsTruncated: data.probabilistic_2d.conic.segments_truncated,
+                label: data.probabilistic_2d.conic.label,
+              }
+            : null,
+          discrete: data.probabilistic_2d.discrete
+            ? {
+                variant: data.probabilistic_2d.discrete.variant,
+                algorithm: data.probabilistic_2d.discrete.algorithm,
+                alpha: data.probabilistic_2d.discrete.alpha,
+                binarize: data.probabilistic_2d.discrete.binarize,
+                axisLogProb: data.probabilistic_2d.discrete.axis_log_prob,
+                classes: data.probabilistic_2d.discrete.classes,
+                formula: data.probabilistic_2d.discrete.formula,
+              }
+            : null,
+          formula: data.probabilistic_2d.formula,
         }
       : null,
     computationTimeMs: data.computation_time_ms,

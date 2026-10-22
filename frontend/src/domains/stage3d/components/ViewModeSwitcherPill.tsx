@@ -88,6 +88,9 @@ export function LayerVisibilityControls2D() {
   const showSpiderLines = useStage3DStore((s) => s.showSpiderLines);
   const showSvHalos = useStage3DStore((s) => s.showSvHalos);
   const showSvmMargins = useStage3DStore((s) => s.showSvmMargins);
+  const showProbEllipses = useStage3DStore((s) => s.showProbEllipses);
+  const showProbCentroids = useStage3DStore((s) => s.showProbCentroids);
+  const showConicBoundary = useStage3DStore((s) => s.showConicBoundary);
   const st = useStage3DStore.getState();
 
   const row = (label: string, checked: boolean, onChange: (v: boolean) => void, hint: string) => (
@@ -123,6 +126,9 @@ export function LayerVisibilityControls2D() {
         {row('Spider lines', showSpiderLines, (v) => st.setShowSpiderLines(v), 'Laser links to the K reference rows')}
         {row('SV halos', showSvHalos, (v) => st.setShowSvHalos(v), 'Diamond rings sized by |α|/C')}
         {row('SVM margins', showSvmMargins, (v) => st.setShowSvmMargins(v), 'Curved f = ±1 parallels (RBF/poly)')}
+        {row('Class ellipses (1–3σ)', showProbEllipses, (v) => st.setShowProbEllipses(v), 'GNB/LDA/QDA equiprobability rings (Phase 44)')}
+        {row('Centroid crosshairs', showProbCentroids, (v) => st.setShowProbCentroids(v), 'Per-class mean markers (μx, μy)')}
+        {row('LDA/QDA boundary', showConicBoundary, (v) => st.setShowConicBoundary(v), 'Exact LDA line + QDA conic curve')}
       </div>
     </div>
   );

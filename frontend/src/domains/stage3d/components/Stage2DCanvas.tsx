@@ -6,6 +6,7 @@ import { sampleColormap } from '../../projection3d/components/colormaps';
 import { DecisionBoundaryContour2D, wy } from './DecisionBoundaryContour2D';
 import { LinearOverlays2D } from './surfaces_2d/LinearOverlays2D';
 import { DistanceOverlays2D } from './surfaces_2d/DistanceOverlays2D';
+import { ProbabilisticOverlays2D } from './surfaces_2d/ProbabilisticOverlays2D';
 import { ActiveDataPointReticle2D } from './ActiveDataPointReticle2D';
 import { WhatIfDisplacementVector2D } from './WhatIfDisplacementVector2D';
 
@@ -223,6 +224,8 @@ export function Stage2DCanvas() {
               />
               {/* Phase 43 — KNN radar, SVM margins, SV halos. */}
               <DistanceOverlays2D contourData={contourData} knnFrame={knnFrame} />
+              {/* Phase 44 — probability ellipses, LDA line / QDA conic, NB steps. */}
+              <ProbabilisticOverlays2D contourData={contourData} />
               {/* Trajectory points */}
               <g aria-label="Trajectory points">
                 {points.map((p, f) => {
@@ -336,6 +339,24 @@ export function Stage2DCanvas() {
                 contourData.linear2d.task === 'classification' &&
                 ` · W=${contourData.linear2d.corridorWidth.toPrecision(4)}`}
               {contourData.linear2d.l1Ratio !== null && ` · ρ=${contourData.linear2d.l1Ratio.toFixed(2)}`}
+            </div>
+          )}
+          {/* Phase 44 — probabilistic badges (conic type / variant / truncation). */}
+          {contourData.probabilistic2d && (
+            <div
+              className="font-mono-tabular pointer-events-none absolute bottom-8 left-1 max-w-[70%] truncate rounded px-2 py-1 text-[11px]"
+              style={{ background: 'rgba(10,15,22,0.72)', color: '#a5b4fc' }}
+              title={contourData.probabilistic2d.formula}
+            >
+              {contourData.probabilistic2d.family === 'gnb' &&
+                `◯ GNB ${contourData.probabilistic2d.ellipses.length}×(1σ/2σ/3σ)`}
+              {contourData.probabilistic2d.family === 'lda' && '━ LDA shared-Σ line'}
+              {contourData.probabilistic2d.family === 'qda' &&
+                `∿ QDA ${contourData.probabilistic2d.conic?.conicType ?? 'conic'}`}
+              {contourData.probabilistic2d.family === 'discrete_nb' &&
+                `▤ ${contourData.probabilistic2d.discrete?.variant ?? 'discrete'} NB steps`}
+              {contourData.probabilistic2d.ellipsesTruncated && ' · top-8'}
+              {contourData.probabilistic2d.isCovarianceApproximated && ' · Σ≈'}
             </div>
           )}
         </div>
