@@ -12,10 +12,10 @@ export function ModelUploadDropzone() {
     async (file: File | undefined) => {
       setLocalError(null);
       if (!file) return;
-      if (!isAcceptedModelFile(file.name)) {
-        setLocalError(`Unsupported model format. Allowed: .joblib, .pkl, .pickle (.onnx/.json/.cbm arrive in later phases)`);
-        return;
-      }
+        if (!isAcceptedModelFile(file.name)) {
+          setLocalError(`Unsupported model format. Allowed: .joblib, .pkl, .pickle, .cbm, .json, .ubj, .model, .xgb, .txt, .lgb (.onnx arrives in later phases)`);
+          return;
+        }
       try {
         await uploadModel(file);
       } catch {
@@ -57,7 +57,7 @@ export function ModelUploadDropzone() {
           <Box size={22} style={{ color: 'var(--text-secondary)' }} />
         )}
         <p className="text-sm font-medium">
-          {isLoadingModel ? 'Deserializing model & checking fitted state…' : 'Drop .joblib / .pkl model file here'}
+          {isLoadingModel ? 'Deserializing model & checking fitted state…' : 'Drop model file here (.joblib / .pkl / .cbm / .txt …)'}
         </p>
         <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
           or <span className="underline">Browse model artifact (Ctrl+M)</span>
