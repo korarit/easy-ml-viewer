@@ -30,6 +30,7 @@ from app.domains.model_engine.adapters.probabilistic import gaussian_nb as _gnb_
 from app.domains.model_engine.adapters.probabilistic import discrete_nb as _discrete_nb_adapter  # noqa: F401
 from app.domains.model_engine.adapters.probabilistic import discriminant as _discriminant_adapter  # noqa: F401
 from app.domains.model_engine.adapters.trees import decision_tree as _decision_tree_adapter  # noqa: F401
+from app.domains.model_engine.adapters.trees import adaboost as _adaboost_adapter  # noqa: F401
 from app.domains.model_engine.adapters.trees import extra_trees as _extra_trees_adapter  # noqa: F401
 from app.domains.model_engine.adapters.trees import random_forest as _random_forest_adapter  # noqa: F401
 
