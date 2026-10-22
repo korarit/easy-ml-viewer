@@ -35,6 +35,14 @@ export function DatasetDropzone() {
   return (
     <div>
       <div
+        className="mb-3 flex flex-wrap items-center gap-2 rounded-md px-3 py-2 text-xs"
+        style={{ background: 'var(--surface-elevated)', color: 'var(--text-secondary)' }}
+      >
+        <span style={{ color: 'var(--text-primary)' }} className="font-medium">New here?</span>
+        <span>1. Load the sample below → 2. Add a model in Step 2 → 3. Press play in Step 5.</span>
+        <span className="font-mono-tabular" style={{ color: 'var(--text-muted)' }}>No signup · files never leave this machine</span>
+      </div>
+      <div
         role="button"
         tabIndex={0}
         aria-label="Drop dataset file here or browse (Ctrl+O)"
@@ -64,13 +72,13 @@ export function DatasetDropzone() {
           <FileUp size={22} style={{ color: 'var(--text-secondary)' }} />
         )}
         <p className="text-sm font-medium">
-          {isUploading ? (uploadProgress ?? 'Processing…') : 'Drop CSV / XLSX / Parquet file here'}
+          {isUploading ? (uploadProgress ?? 'Reading your file…') : 'Drop your table file here'}
         </p>
         <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-          or <span className="underline">Browse local files (Ctrl+O)</span> · Supported: .csv, .tsv, .xlsx, .parquet
+          or <span className="underline">browse files (Ctrl+O)</span> · .csv, .tsv, .xlsx, .parquet
         </p>
         <p className="font-mono-tabular text-[11px]" style={{ color: 'var(--text-muted)' }}>
-          Max file size: 1,024 MB{systemFreeMb !== null ? ` · System free: ${(systemFreeMb / 1024).toFixed(1)} GB` : ''}
+          Max 1,024 MB{systemFreeMb !== null ? ` · ${(systemFreeMb / 1024).toFixed(1)} GB free on this machine` : ''}
         </p>
         <input
           ref={inputRef}
@@ -89,15 +97,22 @@ export function DatasetDropzone() {
         </p>
       )}
       <div className="mt-3 flex flex-wrap gap-2">
-        {SAMPLES.map((s) => (
+        <span className="w-full text-xs" style={{ color: 'var(--text-secondary)' }}>
+          No file handy? Start instantly:
+        </span>
+        {SAMPLES.map((s, i) => (
           <button
             key={s.name}
             disabled={isUploading}
             onClick={() => void loadSampleDataset(s.name).catch(() => undefined)}
-            className="rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-50"
-            style={{ border: '1px solid var(--border-strong)', color: 'var(--text-primary)' }}
+            className="min-h-[36px] rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+            style={
+              i === 0
+                ? { background: 'var(--ml-primary)', color: '#fff' }
+                : { border: '1px solid var(--border-strong)', color: 'var(--text-primary)' }
+            }
           >
-            Load Sample: {s.label}
+            Try sample: {s.label}
           </button>
         ))}
       </div>

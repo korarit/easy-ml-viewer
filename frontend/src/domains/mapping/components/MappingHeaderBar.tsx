@@ -38,27 +38,32 @@ export function MappingHeaderBar({
       style={{ background: 'var(--surface-panel)', border: '1px solid var(--border-subtle)' }}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-sm font-semibold tracking-wide" style={{ color: 'var(--text-primary)' }}>
-          STEP 3: COLUMN MAPPING &amp; TYPE CASTING
-        </h1>
+        <div>
+          <p className="text-[11px tracking-widest uppercase]" style={{ color: 'var(--text-muted)' }}>
+            Step 3 of 5
+          </p>
+          <h1 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            Match model inputs to your columns
+          </h1>
+        </div>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={onAutoMatch}
             disabled={isLoading}
             title="Re-run smart auto-match (Ctrl+M)"
-            className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-40"
+            className="flex min-h-[36px] items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-40"
             style={{ background: 'var(--ml-primary)', color: '#fff' }}
           >
-            <Sparkles size={13} /> Re-Run Smart Auto-Match
+            <Sparkles size={13} /> Auto-match
           </button>
           <button
             onClick={onMapByOrder}
             disabled={isLoading}
             title="Map by column order 0..N"
-            className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-40"
+            className="flex min-h-[36px] items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-40"
             style={{ border: '1px solid var(--border-strong)', color: 'var(--text-primary)' }}
           >
-            <ListOrdered size={13} /> Map by Order 0..N
+            <ListOrdered size={13} /> Map by order
           </button>
           <label
             className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium"
@@ -87,19 +92,19 @@ export function MappingHeaderBar({
           className="font-mono-tabular rounded px-2 py-1"
           style={{ background: 'var(--surface-elevated)', color: 'var(--text-primary)' }}
         >
-          Mapped: {mapped} / {items.length} Features
+          Matched: {mapped} / {items.length}
         </span>
         <span
           className="font-mono-tabular rounded px-2 py-1"
           style={{ background: 'rgba(16,185,129,0.12)', color: 'var(--ml-success, #10b981)' }}
         >
-          Exact/High Confidence: {exact}
+          Confident: {exact}
         </span>
         <span
           className="font-mono-tabular rounded px-2 py-1"
           style={{ background: 'rgba(245,158,11,0.12)', color: 'var(--ml-anomaly)' }}
         >
-          Fuzzy Review Needed: {fuzzy}
+          Needs review: {fuzzy}
         </span>
         <span
           className="font-mono-tabular rounded px-2 py-1"
@@ -108,11 +113,11 @@ export function MappingHeaderBar({
             color: errors ? 'var(--ml-class-1)' : 'var(--text-secondary)',
           }}
         >
-          Unmapped/Error: {errors}
+          Errors: {errors}
         </span>
         {!isValid && items.length > 0 && (
           <span className="font-mono-tabular rounded px-2 py-1" style={{ background: 'rgba(244,63,94,0.12)', color: 'var(--ml-class-1)' }}>
-            {duplicateColumns.length > 0 ? `Duplicate: ${duplicateColumns.join(', ')}` : 'Resolve red rows to continue'}
+            {duplicateColumns.length > 0 ? `Same column used twice: ${duplicateColumns.join(', ')}` : 'Fix the highlighted rows to continue'}
           </span>
         )}
       </div>

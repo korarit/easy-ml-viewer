@@ -77,7 +77,7 @@ export function MappingStepView() {
           style={{ background: 'rgba(245,158,11,0.12)', color: 'var(--ml-anomaly)' }}
           role="alert"
         >
-          Load a dataset (Step 1) and a model (Step 2) first — mapping needs both.
+          Finish Steps 1 and 2 first — matching needs both a file and a model.
         </div>
       )}
 
@@ -113,8 +113,8 @@ export function MappingStepView() {
       )}
 
       {isLoading && (
-        <p className="font-mono-tabular text-[11px]" style={{ color: 'var(--ml-primary)' }}>
-          Running 3-tier fuzzy auto-match + dry-run on first 100 rows…
+        <p className="font-mono-tabular text-[11px]" style={{ color: 'var(--ml-primary)' }} role="status">
+          Matching columns… checking the first 100 rows.
         </p>
       )}
 
@@ -131,23 +131,32 @@ export function MappingStepView() {
       {items.length > 0 && <TargetColumnSelectorCard columns={currentDataset?.columns ?? []} />}
       <DryRunValidationDrawer />
 
-      <div className="flex justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <button
           onClick={() => setActiveStep(2)}
-          className="flex items-center gap-1.5 rounded-md px-4 py-2 text-xs font-medium"
+          className="flex min-h-[40px] items-center gap-1.5 rounded-md px-4 py-2 text-xs font-medium"
           style={{ border: '1px solid var(--border-strong)', color: 'var(--text-primary)' }}
         >
-          <ArrowLeft size={14} /> Back to Step 2
+          <ArrowLeft size={14} /> Back
         </button>
-        <button
-          onClick={() => void handleCommit()}
-          disabled={!ready || !isValid || isCommitting}
-          title={!isValid ? 'Resolve mapping errors first' : 'Confirm mapping and go to Step 4 (Ctrl+Enter)'}
-          className="flex items-center gap-1.5 rounded-md px-4 py-2 text-xs font-medium disabled:opacity-40"
-          style={{ background: 'var(--ml-primary)', color: '#fff' }}
-        >
-          {isCommitting ? 'Validating…' : 'Confirm Mapping & Go to Step 4 Queue'} <ArrowRight size={14} />
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xs" style={{ color: isValid ? 'var(--ml-class-0)' : 'var(--text-muted)' }} aria-live="polite">
+            {items.length === 0
+              ? '○ Waiting for columns…'
+              : isValid
+                ? `✓ All ${items.length} inputs matched`
+                : '○ Fix the highlighted rows to continue'}
+          </span>
+          <button
+            onClick={() => void handleCommit()}
+            disabled={!ready || !isValid || isCommitting}
+            title={!isValid ? 'Fix the highlighted rows first' : 'Confirm and go to Step 4 (Ctrl+Enter)'}
+            className="flex min-h-[40px] items-center gap-1.5 rounded-md px-4 py-2 text-xs font-medium disabled:opacity-40"
+            style={{ background: 'var(--ml-primary)', color: '#fff' }}
+          >
+            {isCommitting ? 'Checking…' : 'Confirm & pick rows'} <ArrowRight size={14} />
+          </button>
+        </div>
       </div>
     </div>
   );

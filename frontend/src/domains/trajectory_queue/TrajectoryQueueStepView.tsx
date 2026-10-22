@@ -97,11 +97,18 @@ export function TrajectoryQueueStepView() {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 overflow-auto p-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-sm font-semibold tracking-wide">STEP 4: DATA SELECTOR & TRAJECTORY QUEUE</h1>
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <p className="text-[11px tracking-widest uppercase]" style={{ color: 'var(--text-muted)' }}>
+            Step 4 of 5
+          </p>
+          <h1 className="text-sm font-semibold">Pick rows to play</h1>
+          <p className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+            Tick rows to build your playback queue — each row becomes one animation frame.
+          </p>
+        </div>
         <span className="font-mono-tabular text-[11px]" style={{ color: 'var(--text-muted)' }}>
-          Total rows: {q.totalDatasetRows.toLocaleString()} · Filtered:{' '}
-          {q.totalFilteredRows.toLocaleString()}
+          {q.totalDatasetRows.toLocaleString()} rows · {q.totalFilteredRows.toLocaleString()} shown
         </span>
       </div>
 

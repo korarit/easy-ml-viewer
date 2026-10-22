@@ -37,11 +37,19 @@ export function DatasetStepView() {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 overflow-auto p-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-sm font-semibold tracking-wide">STEP 1: DATASET INGESTION & PROFILING</h1>
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <p className="text-[11px tracking-widest uppercase]" style={{ color: 'var(--text-muted)' }}>
+            Step 1 of 5
+          </p>
+          <h1 className="text-sm font-semibold">Choose your data</h1>
+          <p className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+            Drop a table file — we preview it and convert it for fast 3D playback.
+          </p>
+        </div>
         {isUploading && (
-          <span className="font-mono-tabular text-[11px]" style={{ color: 'var(--ml-primary)' }}>
-            1. Uploading → 2. Encoding → 3. float32 → 4. Profiles…
+          <span className="font-mono-tabular text-[11px]" style={{ color: 'var(--ml-primary)' }} role="status">
+            Reading file… this usually takes a few seconds.
           </span>
         )}
       </div>
@@ -66,15 +74,23 @@ export function DatasetStepView() {
       <ColumnProfileTable />
       <DatasetSamplePreview />
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs" aria-label="What you need before continuing">
+          <li style={{ color: currentDataset ? 'var(--ml-class-0)' : 'var(--text-muted)' }}>
+            {currentDataset ? '✓' : '○'} File loaded{currentDataset ? `: ${currentDataset.columns.length} columns` : ''}
+          </li>
+          <li style={{ color: numericCount >= 1 ? 'var(--ml-class-0)' : 'var(--text-muted)' }}>
+            {numericCount >= 1 ? '✓' : '○'} At least 1 numeric column{numericCount >= 1 ? ` (${numericCount})` : ''}
+          </li>
+        </ul>
         <button
           disabled={!canProceed}
           onClick={() => unlockStep(2)}
-          title={canProceed ? 'Go to Step 2 (Enter)' : 'Load a dataset with at least 1 numeric column first'}
-          className="flex items-center gap-1.5 rounded-md px-4 py-2 text-xs font-medium disabled:opacity-40"
+          title={canProceed ? 'Go to Step 2 (Enter)' : 'Load a file with at least 1 numeric column first'}
+          className="flex min-h-[40px] items-center gap-1.5 rounded-md px-4 py-2 text-xs font-medium disabled:opacity-40"
           style={{ background: 'var(--ml-primary)', color: '#fff' }}
         >
-          Proceed to Step 2: Load ML Model <ArrowRight size={14} />
+          Continue to model <ArrowRight size={14} />
         </button>
       </div>
     </div>

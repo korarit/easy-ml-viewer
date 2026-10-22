@@ -32,14 +32,14 @@ export function TrajectoryQueueDock({
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-medium">
-          Active Trajectory Queue:{' '}
+          Your playback queue:{' '}
           <span className="font-mono-tabular" style={{ color: 'var(--ml-primary)' }}>
             {selectedRowIndices.length.toLocaleString()} frames
           </span>{' '}
-          <span style={{ color: 'var(--text-muted)' }}>(est. playback @ 1x: {seconds}s)</span>
+          <span style={{ color: 'var(--text-muted)' }}>(about {seconds}s at normal speed)</span>
         </p>
         {selectedRowIndices.length > 0 && (
-          <button onClick={onClear} className="text-xs underline" style={{ color: 'var(--text-secondary)' }}>
+          <button onClick={onClear} className="min-h-[32px] text-xs underline" style={{ color: 'var(--text-secondary)' }}>
             Clear queue
           </button>
         )}
@@ -53,7 +53,9 @@ export function TrajectoryQueueDock({
 
       {selectedRowIndices.length === 0 ? (
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          Queue is empty — tick rows in the table or use a preset above.
+          Queue is empty — tick the checkboxes in the table above, or press{' '}
+          <kbd className="font-mono-tabular rounded px-1" style={{ background: 'var(--surface-elevated)' }}>Ctrl+A</kbd>{' '}
+          to select the filtered rows.
         </p>
       ) : (
         <div className="flex flex-wrap items-center gap-1.5" aria-label="Trajectory queue filmstrip">
@@ -103,23 +105,30 @@ export function TrajectoryQueueDock({
         </div>
       )}
 
-      <div className="flex justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 rounded-md px-4 py-2 text-xs font-medium"
+          className="flex min-h-[40px] items-center gap-1.5 rounded-md px-4 py-2 text-xs font-medium"
           style={{ border: '1px solid var(--border-strong)', color: 'var(--text-primary)' }}
         >
-          <ArrowLeft size={14} /> Back to Mapping
+          <ArrowLeft size={14} /> Back
         </button>
-        <button
-          onClick={onLaunch}
-          disabled={isLaunchDisabled}
-          title={isLaunchDisabled ? 'Select at least 1 row first' : `Launch 3D simulation with ${selectedRowIndices.length} frames`}
-          className="flex items-center gap-1.5 rounded-md px-4 py-2 text-xs font-medium disabled:opacity-40"
-          style={{ background: 'var(--ml-primary)', color: '#fff' }}
-        >
-          <Play size={14} /> Launch 3D Simulation Studio ({selectedRowIndices.length}) <ArrowRight size={14} />
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          {isLaunchDisabled && (
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              ○ Select at least 1 row above to unlock the 3D studio
+            </span>
+          )}
+          <button
+            onClick={onLaunch}
+            disabled={isLaunchDisabled}
+            title={isLaunchDisabled ? 'Select at least 1 row above first' : `Open 3D studio with ${selectedRowIndices.length} frames`}
+            className="flex min-h-[40px] items-center gap-1.5 rounded-md px-4 py-2 text-xs font-medium disabled:opacity-40"
+            style={{ background: 'var(--ml-primary)', color: '#fff' }}
+          >
+            <Play size={14} /> Open 3D studio ({selectedRowIndices.length}) <ArrowRight size={14} />
+          </button>
+        </div>
       </div>
     </div>
   );

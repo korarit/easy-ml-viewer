@@ -57,13 +57,13 @@ export function ModelUploadDropzone() {
           <Box size={22} style={{ color: 'var(--text-secondary)' }} />
         )}
         <p className="text-sm font-medium">
-          {isLoadingModel ? 'Deserializing model & checking fitted state…' : 'Drop model file here (.joblib / .pkl / .cbm / .txt …)'}
+          {isLoadingModel ? 'Reading model… checking it can predict…' : 'Drop your model file here'}
         </p>
         <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-          or <span className="underline">Browse model artifact (Ctrl+M)</span>
+          or <span className="underline">browse files (Ctrl+M)</span> · .joblib, .pkl, .cbm, .txt, .onnx and more
         </p>
         <p className="font-mono-tabular text-[11px]" style={{ color: 'var(--text-muted)' }}>
-          Local pickle loading · max 1,024 MB · memory-mapped
+          Checked on your machine only · max 1,024 MB
         </p>
         <input
           ref={inputRef}
@@ -82,13 +82,16 @@ export function ModelUploadDropzone() {
         </p>
       )}
       <div className="mt-3">
+        <span className="mb-1 block text-xs" style={{ color: 'var(--text-secondary)' }}>
+          No model handy? Start instantly:
+        </span>
         <button
           disabled={isLoadingModel}
           onClick={() => void loadSampleModel('house_price_linreg').catch(() => undefined)}
-          className="rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-50"
-          style={{ border: '1px solid var(--border-strong)', color: 'var(--text-primary)' }}
+          className="min-h-[36px] rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+          style={{ background: 'var(--ml-primary)', color: '#fff' }}
         >
-          Load Sample Model (House Price Linear Regression)
+          Try sample model (House prices)
         </button>
       </div>
       {currentModel && (
