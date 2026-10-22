@@ -25,6 +25,7 @@ class Visual3DType(str, Enum):
     VORONOI_KNN_PROXIMITY = "voronoi_knn_proximity"
     SVM_MARGIN_TUBE = "svm_margin_tube"
     GAUSSIAN_ELLIPSOID_DOMES = "gaussian_ellipsoid_domes"
+    DISCRETE_NB_TOWERS = "discrete_nb_towers"
     NEURAL_MORPHING_MANIFOLD = "neural_morphing_manifold"
     CLUSTER_CENTROID_VORONOI = "cluster_centroid_voronoi"
     ANOMALY_ISOLATION_DEPTH = "anomaly_isolation_depth"
