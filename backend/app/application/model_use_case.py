@@ -41,6 +41,7 @@ from app.domains.model_engine.adapters.trees import random_forest as _random_for
 from app.domains.model_engine.adapters.neural_onnx import mlp_adapter as _mlp_adapter  # noqa: F401
 from app.domains.model_engine.adapters.neural_onnx import pipeline_adapter as _pipeline_adapter  # noqa: F401,F841
 from app.domains.model_engine.adapters.neural_onnx import onnx_classical as _onnx_classical_adapter  # noqa: F401
+from app.domains.model_engine.adapters.neural_onnx import onnx_deep as _onnx_deep_adapter  # noqa: F401
 
 # Phase 33-35: native booster formats load straight into xgb.Booster / lgb.Booster / CatBoost .cbm.
 # Phase 38: .onnx loads via onnx.load into a ModelProto graph.
@@ -197,23 +198,45 @@ class ModelIngestUseCase:
             for feature, weight in zip(schema.features, weights):
                 feature.learned_weight_or_importance = weight
             onnx_meta = None
+            onnx_step = "onnx"
             try:
                 from app.domains.model_engine.adapters.neural_onnx.onnx_classical import (  # noqa: PLC0415
                     inspect_onnx_classical,
                 )
 
                 onnx_meta = inspect_onnx_classical(obj)
-                raw_params: dict[str, Any] = {
-                    "detected_operator": onnx_meta.detected_operator,
-                    "operator_family": onnx_meta.operator_family,
-                    "opset_version": onnx_meta.opset_version,
-                    "has_zipmap": onnx_meta.has_zipmap,
-                    "n_onnx_nodes": len(onnx_meta.node_chain),
-                }
-                if onnx_meta.operator_family == "tree_ensemble":
-                    raw_params["task_hint"] = "tree_ensemble"
+                if onnx_meta.operator_family in ("tree_ensemble", "linear", "svm"):
+                    raw_params: dict[str, Any] = {
+                        "detected_operator": onnx_meta.detected_operator,
+                        "operator_family": onnx_meta.operator_family,
+                        "opset_version": onnx_meta.opset_version,
+                        "has_zipmap": onnx_meta.has_zipmap,
+                        "n_onnx_nodes": len(onnx_meta.node_chain),
+                    }
+                    if onnx_meta.operator_family == "tree_ensemble":
+                        raw_params["task_hint"] = "tree_ensemble"
+                    onnx_step = onnx_meta.detected_operator
+                else:
+                    raise ValueError("not a classical onnx graph")
             except (ValueError, TypeError, AttributeError):
-                raw_params = {}
+                try:
+                    from app.domains.model_engine.adapters.neural_onnx.onnx_deep import (  # noqa: PLC0415
+                        inspect_onnx_deep,
+                    )
+
+                    deep_meta = inspect_onnx_deep(obj)
+                    raw_params = {
+                        "detected_operator": "Gemm/MatMul DeepNet",
+                        "operator_family": "deep_mlp",
+                        "opset_version": deep_meta.opset_version,
+                        "n_probed_layers": deep_meta.n_hidden_blocks,
+                        "penultimate_layer": deep_meta.penultimate_name,
+                        "is_static_batch": deep_meta.is_static_batch,
+                    }
+                    onnx_step = "Gemm/MatMul DeepNet"
+                    onnx_meta = None
+                except (ValueError, TypeError, AttributeError):
+                    raw_params = {}
             task_value = adapter.task_type.value
             metadata = ModelMetadata(
                 model_id=model_id,
@@ -225,7 +248,7 @@ class ModelIngestUseCase:
                 task_type=task_value,
                 visual_3d_type=adapter.visual_3d_type.value,
                 is_pipeline=False,
-                pipeline_steps=[onnx_meta.detected_operator] if onnx_meta is not None else ["onnx"],
+                pipeline_steps=[onnx_step],
                 n_features_in=schema.n_features_in,
                 classes=schema.classes,
                 intercept_or_base=None,

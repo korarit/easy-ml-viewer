@@ -240,13 +240,34 @@ class UniversalSchemaDetector:
         )
 
         meta = inspect_onnx_classical(proto)
-        if meta.n_features < 1:
+        if meta.operator_family in ("tree_ensemble", "linear", "svm") and meta.n_features >= 1:
+            auto = len(meta.input_signature) <= 1
+            features = [
+                FeatureRequirement(
+                    index=i,
+                    name=name,
+                    expected_dtype="float32",
+                    is_auto_generated_name=auto,
+                )
+                for i, name in enumerate(meta.feature_names)
+            ]
+            classes: list[str | int | float] | None = None
+            if meta.is_classifier and meta.classes:
+                classes = [v for v in meta.classes]
+            return ModelSchema(n_features_in=meta.n_features, features=features, classes=classes)
+        # Phase 39: deep neural graphs (Gemm/MatMul depth, no ai.onnx.ml).
+        from app.domains.model_engine.adapters.neural_onnx.onnx_deep import (  # noqa: PLC0415
+            inspect_onnx_deep,
+        )
+
+        deep = inspect_onnx_deep(proto)
+        if deep.n_features < 1:
             raise ModelLoadError(
                 f"Cannot determine input dimensionality of '{type(proto).__name__}'",
                 details={"estimator_class": type(proto).__name__},
                 code="SCHEMA_EXTRACTION_FAILED",
             )
-        auto = len(meta.input_signature) <= 1
+        auto = len(deep.input_signature) <= 1
         features = [
             FeatureRequirement(
                 index=i,
@@ -254,12 +275,12 @@ class UniversalSchemaDetector:
                 expected_dtype="float32",
                 is_auto_generated_name=auto,
             )
-            for i, name in enumerate(meta.feature_names)
+            for i, name in enumerate(deep.feature_names)
         ]
-        classes: list[str | int | float] | None = None
-        if meta.is_classifier and meta.classes:
-            classes = [v for v in meta.classes]
-        return ModelSchema(n_features_in=meta.n_features, features=features, classes=classes)
+        classes = None
+        if deep.is_classifier and deep.classes:
+            classes = [v for v in deep.classes]
+        return ModelSchema(n_features_in=deep.n_features, features=features, classes=classes)
 
     @staticmethod
     def _extract_lgb_booster_schema(booster: Any) -> ModelSchema | None:
