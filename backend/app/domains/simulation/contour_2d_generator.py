@@ -43,6 +43,13 @@ try:  # Phase 44 — optional probabilistic/discriminant overlays (same contract
 except ImportError:  # pragma: no cover - extractor module missing
     Probabilistic2DExtractor = None  # type: ignore[assignment,misc]
 
+try:  # Phase 45 — optional tree/ensemble overlays (same fail-safe contract).
+    from app.domains.model_engine.adapters.trees.tree_2d_extractor import (
+        Tree2DExtractor,
+    )
+except ImportError:  # pragma: no cover - extractor module missing
+    Tree2DExtractor = None  # type: ignore[assignment,misc]
+
 #: Batch size shared with the Phase-09 surface path (memory budget §5.1).
 PREDICT_CHUNK_SIZE = 2_500
 
@@ -124,6 +131,11 @@ class Contour2DResponse(BaseModel):
     probabilistic_2d: dict[str, Any] | None = Field(
         default=None,
         description="Gaussian ellipses / LDA line / QDA conic / discrete-NB steps",
+    )
+    # Phase 45 — tree & ensemble overlays (None when N/A).
+    trees_2d: dict[str, Any] | None = Field(
+        default=None,
+        description="Orthogonal cut segments / leaf boxes / forest cuts / adaboost stages",
     )
     computation_time_ms: float = 0.0
 
@@ -473,6 +485,27 @@ class Contour2DGenerator:
             except Exception:
                 probabilistic_2d = None
 
+        # Phase 45 — tree/ensemble partitions (fail-safe, capped segments/boxes).
+        trees_2d: dict[str, Any] | None = None
+        if Tree2DExtractor is not None:
+            try:
+                tree_geometry = Tree2DExtractor.extract_trees_2d_geometry(
+                    model_obj=model_obj,
+                    X=ref,
+                    x_feature_idx=int(x_feature_idx),
+                    y_feature_idx=int(y_feature_idx),
+                    x_feature_name=x_feature_name,
+                    y_feature_name=y_feature_name,
+                    x_range_raw=(float(x_min), float(x_max)),
+                    y_range_raw=(float(y_min), float(y_max)),
+                    x_scale=x_scale,
+                    y_scale=y_scale,
+                    active_row=current_row_values,
+                )
+                trees_2d = tree_geometry.model_dump(mode="json") if tree_geometry is not None else None
+            except Exception:
+                trees_2d = None
+
         if prediction_task == "classification":
             proba = _chunked_proba_matrix(model_obj, final_est, grid)
             if proba is None:
@@ -591,5 +624,6 @@ class Contour2DGenerator:
             svm_2d=svm_2d,
             knn_2d=knn_2d,
             probabilistic_2d=probabilistic_2d,
+            trees_2d=trees_2d,
             computation_time_ms=elapsed_ms,
         )
