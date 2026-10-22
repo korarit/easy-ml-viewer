@@ -19,6 +19,7 @@ dependencies = [
   "joblib>=1.4.0",
   "xgboost>=2.0.0",
   "lightgbm>=4.0.0",
+  "catboost>=1.2.0",
   "msgpack>=1.0",
   "zstandard>=0.22",
 ]

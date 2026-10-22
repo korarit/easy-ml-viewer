@@ -49,8 +49,13 @@ def _booster_objective(obj: Any) -> tuple[str, int]:
 
 
 def _safe_n_features(estimator: Any) -> int | None:
-    for attr in ("n_features_in_", "n_features_to_select_"):
+    for attr in ("n_features_in_", "n_features_to_select_", "n_features_in"):
         value = getattr(estimator, attr, None)
+        if callable(value):
+            try:
+                value = value()
+            except (TypeError, ValueError, AttributeError):
+                continue
         if isinstance(value, (int,)) and value >= 1:
             return int(value)
         try:
@@ -60,6 +65,14 @@ def _safe_n_features(estimator: Any) -> int | None:
                 return int(value)
         except ImportError:
             pass
+    # Phase 35: CatBoost exposes feature_names_ without n_features_in_.
+    for attr in ("feature_names_", "feature_names_in_", "feature_names"):
+        names = getattr(estimator, attr, None)
+        try:
+            if names is not None and len(list(names)) >= 1:
+                return int(len(list(names)))
+        except (AttributeError, TypeError, ValueError):
+            continue
     coef = getattr(estimator, "coef_", None)
     if coef is not None:
         try:
@@ -71,6 +84,17 @@ def _safe_n_features(estimator: Any) -> int | None:
         except (AttributeError, TypeError, ValueError):
             pass
     return None
+
+
+def _catboost_cat_indices(estimator: Any) -> set[int]:
+    """Phase 35: fitted CatBoost categorical column indices (empty when n/a)."""
+    try:
+        raw = estimator.get_cat_feature_indices()
+        if raw is None:
+            return set()
+        return {int(v) for v in list(raw)}
+    except (AttributeError, TypeError, ValueError):
+        return set()
 
 
 class UniversalSchemaDetector:
@@ -102,6 +126,13 @@ class UniversalSchemaDetector:
     @staticmethod
     def validate_is_fitted(estimator: Any) -> None:
         """Raise MODEL_NOT_FITTED when the estimator never saw .fit()."""
+        # Phase 35: CatBoost estimators expose tree_count_ (no sklearn tags).
+        if type(estimator).__name__ in ("CatBoostClassifier", "CatBoostRegressor"):
+            try:
+                if int(getattr(estimator, "tree_count_", 0) or 0) >= 1:
+                    return
+            except (TypeError, ValueError):
+                pass
         if _is_native_booster(estimator):
             try:
                 if callable(getattr(estimator, "num_boosted_rounds", None)):
@@ -147,6 +178,9 @@ class UniversalSchemaDetector:
         if _is_native_booster(estimator):
             return UniversalSchemaDetector._extract_booster_schema(estimator)
         names_attr = getattr(estimator, "feature_names_in_", None)
+        if names_attr is None:
+            # Phase 35: CatBoost sklearn API stores names in feature_names_.
+            names_attr = getattr(estimator, "feature_names_", None)
         n = _safe_n_features(estimator)
         if names_attr is not None:
             names = [str(v) for v in list(names_attr)]
@@ -161,11 +195,12 @@ class UniversalSchemaDetector:
                 code="SCHEMA_EXTRACTION_FAILED",
             )
         auto = names_attr is None
+        cat_set = _catboost_cat_indices(estimator)
         features = [
             FeatureRequirement(
                 index=i,
                 name=name,
-                expected_dtype="float32",
+                expected_dtype=("categorical" if i in cat_set else "float32"),
                 is_auto_generated_name=auto,
             )
             for i, name in enumerate(names)

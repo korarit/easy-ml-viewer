@@ -23,7 +23,8 @@ def get_model_use_case() -> ModelIngestUseCase:
 
 
 class TracePreviewRequest(BaseModel):
-    rows: list[list[float]] = Field(min_length=1)
+    # Phase 35: CatBoost native categoricals arrive as strings — accept Any cells.
+    rows: list[list[Any]] = Field(min_length=1)
     row_indices: list[int] = Field(min_length=1)
     actual_targets: list[float | None] | None = None
     feature_names: list[str] | None = None
@@ -92,7 +93,11 @@ def trace_preview(
     adapter = ModelRegistry.resolve_adapter(final_est, ".joblib")
     schema = UniversalSchemaDetector.extract_schema(final_est)
     feature_names = body.feature_names or [f.name for f in schema.features]
-    X = np.asarray(body.rows, dtype=np.float32)
+    try:
+        X = np.asarray(body.rows, dtype=np.float32)
+    except (TypeError, ValueError):
+        # Phase 35: mixed categorical (str) rows — keep object dtype for the Pool.
+        X = np.asarray(body.rows, dtype=object)
     if X.ndim != 2 or X.shape[1] != schema.n_features_in:
         from app.core.exceptions import SchemaMismatchError
 
