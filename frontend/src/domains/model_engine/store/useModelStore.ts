@@ -50,11 +50,11 @@ async function throwIfError(res: Response): Promise<void> {
   throw new Error(message);
 }
 
-export const ACCEPTED_MODEL_EXTENSIONS = '.joblib,.pkl,.pickle,.cbm,.json,.ubj,.model,.xgb,.txt,.lgb';
+export const ACCEPTED_MODEL_EXTENSIONS = '.joblib,.pkl,.pickle,.cbm,.json,.ubj,.model,.xgb,.txt,.lgb,.onnx';
 
 export function isAcceptedModelFile(name: string): boolean {
   const lower = name.toLowerCase();
-  return ['.joblib', '.pkl', '.pickle', '.cbm', '.json', '.ubj', '.model', '.xgb', '.txt', '.lgb'].some((ext) =>
+  return ['.joblib', '.pkl', '.pickle', '.cbm', '.json', '.ubj', '.model', '.xgb', '.txt', '.lgb', '.onnx'].some((ext) =>
     lower.endsWith(ext),
   );
 }

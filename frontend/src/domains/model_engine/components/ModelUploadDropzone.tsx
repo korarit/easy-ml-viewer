@@ -13,7 +13,7 @@ export function ModelUploadDropzone() {
       setLocalError(null);
       if (!file) return;
         if (!isAcceptedModelFile(file.name)) {
-          setLocalError(`Unsupported model format. Allowed: .joblib, .pkl, .pickle, .cbm, .json, .ubj, .model, .xgb, .txt, .lgb (.onnx arrives in later phases)`);
+          setLocalError(`Unsupported model format. Allowed: .joblib, .pkl, .pickle, .cbm, .json, .ubj, .model, .xgb, .txt, .lgb, .onnx`);
           return;
         }
       try {
