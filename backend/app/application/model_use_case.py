@@ -38,6 +38,7 @@ from app.domains.model_engine.adapters.trees import decision_tree as _decision_t
 from app.domains.model_engine.adapters.trees import adaboost as _adaboost_adapter  # noqa: F401
 from app.domains.model_engine.adapters.trees import extra_trees as _extra_trees_adapter  # noqa: F401
 from app.domains.model_engine.adapters.trees import random_forest as _random_forest_adapter  # noqa: F401
+from app.domains.model_engine.adapters.neural_onnx import mlp_adapter as _mlp_adapter  # noqa: F401
 
 # Phase 33-35: native booster formats load straight into xgb.Booster / lgb.Booster / CatBoost .cbm.
 _ALLOWED_MODEL_SUFFIXES = {".joblib", ".pkl", ".pickle", ".json", ".ubj", ".model", ".xgb", ".txt", ".lgb", ".cbm"}
