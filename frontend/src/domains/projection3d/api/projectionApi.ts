@@ -284,6 +284,54 @@ interface Contour2DResponse {
     no_axis_splits: boolean;
     formula: string;
   } | null;
+  neural_2d: {
+    family: string;
+    algorithm: string;
+    x_feature: string;
+    y_feature: string;
+    x_feature_idx: number;
+    y_feature_idx: number;
+    activation: string | null;
+    hyperplanes: Array<{
+      neuron_idx: number;
+      w1: number;
+      w2: number;
+      b_eff: number;
+      segment_raw: [number, number, number, number] | null;
+      segment_world: [number, number, number, number] | null;
+      is_dead: boolean;
+      is_always_active: boolean;
+    }>;
+    hyperplanes_truncated: boolean;
+    dead_count: number;
+    active_count: number;
+    active_ratio: number | null;
+    pipeline: {
+      has_toggle: boolean;
+      scaler_kind: string;
+      inner_family: string;
+      inner_algorithm: string;
+      mu_x: number | null;
+      sigma_x: number | null;
+      mu_y: number | null;
+      sigma_y: number | null;
+      scaled_x_range: [number, number] | null;
+      scaled_y_range: [number, number] | null;
+      formula: string;
+    } | null;
+    onnx: {
+      operator: string;
+      chain: string[];
+      n_nodes: number;
+      latent_available: boolean;
+      latent_points_2d: Array<[number, number]>;
+      latent_explained_variance: number[];
+      penultimate_width: number;
+      formula: string;
+    } | null;
+    no_axis_splits: boolean;
+    formula: string;
+  } | null;
   computation_time_ms: number;
 }
 
@@ -578,6 +626,60 @@ export async function fetchContour2D(
             : null,
           noAxisSplits: data.boosting_2d.no_axis_splits,
           formula: data.boosting_2d.formula,
+        }
+      : null,
+    neural2d: data.neural_2d
+      ? {
+          family: data.neural_2d.family,
+          algorithm: data.neural_2d.algorithm,
+          xFeature: data.neural_2d.x_feature,
+          yFeature: data.neural_2d.y_feature,
+          xFeatureIdx: data.neural_2d.x_feature_idx,
+          yFeatureIdx: data.neural_2d.y_feature_idx,
+          activation: data.neural_2d.activation,
+          hyperplanes: data.neural_2d.hyperplanes.map((h) => ({
+            neuronIdx: h.neuron_idx,
+            w1: h.w1,
+            w2: h.w2,
+            bEff: h.b_eff,
+            segmentRaw: h.segment_raw,
+            segmentWorld: h.segment_world,
+            isDead: h.is_dead,
+            isAlwaysActive: h.is_always_active,
+          })),
+          hyperplanesTruncated: data.neural_2d.hyperplanes_truncated,
+          deadCount: data.neural_2d.dead_count,
+          activeCount: data.neural_2d.active_count,
+          activeRatio: data.neural_2d.active_ratio,
+          pipeline: data.neural_2d.pipeline
+            ? {
+                hasToggle: data.neural_2d.pipeline.has_toggle,
+                scalerKind: data.neural_2d.pipeline.scaler_kind,
+                innerFamily: data.neural_2d.pipeline.inner_family,
+                innerAlgorithm: data.neural_2d.pipeline.inner_algorithm,
+                muX: data.neural_2d.pipeline.mu_x,
+                sigmaX: data.neural_2d.pipeline.sigma_x,
+                muY: data.neural_2d.pipeline.mu_y,
+                sigmaY: data.neural_2d.pipeline.sigma_y,
+                scaledXRange: data.neural_2d.pipeline.scaled_x_range,
+                scaledYRange: data.neural_2d.pipeline.scaled_y_range,
+                formula: data.neural_2d.pipeline.formula,
+              }
+            : null,
+          onnx: data.neural_2d.onnx
+            ? {
+                operator: data.neural_2d.onnx.operator,
+                chain: data.neural_2d.onnx.chain,
+                nNodes: data.neural_2d.onnx.n_nodes,
+                latentAvailable: data.neural_2d.onnx.latent_available,
+                latentPoints2d: data.neural_2d.onnx.latent_points_2d,
+                latentExplainedVariance: data.neural_2d.onnx.latent_explained_variance,
+                penultimateWidth: data.neural_2d.onnx.penultimate_width,
+                formula: data.neural_2d.onnx.formula,
+              }
+            : null,
+          noAxisSplits: data.neural_2d.no_axis_splits,
+          formula: data.neural_2d.formula,
         }
       : null,
     computationTimeMs: data.computation_time_ms,

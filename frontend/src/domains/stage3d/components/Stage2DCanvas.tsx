@@ -9,6 +9,8 @@ import { DistanceOverlays2D } from './surfaces_2d/DistanceOverlays2D';
 import { ProbabilisticOverlays2D } from './surfaces_2d/ProbabilisticOverlays2D';
 import { TreesOverlays2D } from './surfaces_2d/TreesOverlays2D';
 import { BoostingOverlays2D } from './surfaces_2d/BoostingOverlays2D';
+import { NeuralOverlays2D } from './surfaces_2d/NeuralOverlays2D';
+import { scaledRulerLabel } from './surfaces_2d/neural2dMath';
 import { ActiveDataPointReticle2D } from './ActiveDataPointReticle2D';
 import { WhatIfDisplacementVector2D } from './WhatIfDisplacementVector2D';
 
@@ -44,6 +46,7 @@ export function Stage2DCanvas() {
   const adaBoostStage = useStage3DStore((s) => s.adaBoostStage);
   const showHeatmap = useStage3DStore((s) => s.showHeatmap);
   const showRulers = useStage3DStore((s) => s.showRulers);
+  const pipelineSpace = useStage3DStore((s) => s.pipelineSpace);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const squareRef = useRef<HTMLDivElement>(null);
@@ -162,6 +165,24 @@ export function Stage2DCanvas() {
     if (abs !== 0 && (abs >= 10000 || abs < 0.001)) return v.toExponential(1);
     return String(Math.round(v * 10000) / 10000);
   };
+  // Phase 47 — pipeline scaled-space rulers: exact (raw(w) - mu) / sigma labels.
+  const neuralPipe =
+    contourData?.neural2d?.family === 'pipeline' ? (contourData.neural2d.pipeline ?? null) : null;
+  const useScaledRulers =
+    pipelineSpace === 'scaled' &&
+    !!neuralPipe?.hasToggle &&
+    neuralPipe.muX !== null &&
+    neuralPipe.sigmaX !== null &&
+    neuralPipe.muY !== null &&
+    neuralPipe.sigmaY !== null;
+  const xRulerLabel = (w: number): string =>
+    useScaledRulers
+      ? scaledRulerLabel(w, contourData!.xRangeRaw[0], contourData!.xRangeRaw[1], neuralPipe!.muX!, neuralPipe!.sigmaX!)
+      : rawLabel(w, contourData!.xRangeRaw[0], contourData!.xRangeRaw[1]);
+  const yRulerLabel = (w: number): string =>
+    useScaledRulers
+      ? scaledRulerLabel(w, contourData!.yRangeRaw[0], contourData!.yRangeRaw[1], neuralPipe!.muY!, neuralPipe!.sigmaY!)
+      : rawLabel(w, contourData!.yRangeRaw[0], contourData!.yRangeRaw[1]);
 
   return (
     <div className="relative flex h-full min-h-0 w-full items-center justify-center" data-stage2d-canvas="true">
@@ -234,6 +255,8 @@ export function Stage2DCanvas() {
               <TreesOverlays2D contourData={contourData} />
               {/* Phase 46 — boosting polygons, bin grids, oblivious checkerboard, SHAP vectors. */}
               <BoostingOverlays2D contourData={contourData} boostFrame={boostFrame} />
+              {/* Phase 47 — MLP neuron cuts, pipeline space toggle, ONNX latent plane. */}
+              <NeuralOverlays2D contourData={contourData} />
               {/* Trajectory points */}
               <g aria-label="Trajectory points">
                 {points.map((p, f) => {
@@ -269,7 +292,7 @@ export function Stage2DCanvas() {
                     <g key={`x-${w}`}>
                       <line x1={w} y1={4.86} x2={w} y2={5} stroke="#475569" strokeWidth={0.03} />
                       <text x={w} y={4.72} textAnchor="middle">
-                        {rawLabel(w, contourData.xRangeRaw[0], contourData.xRangeRaw[1])}
+                        {xRulerLabel(w)}
                       </text>
                     </g>
                   ))}
@@ -277,7 +300,7 @@ export function Stage2DCanvas() {
                     <g key={`y-${w}`}>
                       <line x1={-5} y1={wy(w)} x2={-4.86} y2={wy(w)} stroke="#475569" strokeWidth={0.03} />
                       <text x={-4.78} y={wy(w) + 0.11} textAnchor="start">
-                        {rawLabel(w, contourData.yRangeRaw[0], contourData.yRangeRaw[1])}
+                        {yRulerLabel(w)}
                       </text>
                     </g>
                   ))}
@@ -432,6 +455,30 @@ export function Stage2DCanvas() {
                     `▦ CatBoost ${b.obliviousXCutsRaw.length + 1}×${b.obliviousYCutsRaw.length + 1} checkerboard${b.obliviousTruncated ? ' · capped' : ''}`}
                   {live && ` · SHAP (${live.phiX >= 0 ? '+' : ''}${live.phiX.toFixed(2)}, ${live.phiY >= 0 ? '+' : ''}${live.phiY.toFixed(2)})`}
                   {b.noAxisSplits && ' · off-slice splits only'}
+                </div>
+              );
+            })()}
+          {/* Phase 47 — neural / pipeline / ONNX badge (MLP ratio, toggle state, latent summary). */}
+          {contourData.neural2d &&
+            (() => {
+              const n = contourData.neural2d!;
+              return (
+                <div
+                  className="font-mono-tabular pointer-events-none absolute bottom-14 left-1 max-w-[70%] truncate rounded px-2 py-1 text-[11px]"
+                  style={{ background: 'rgba(10,15,22,0.72)', color: '#67e8f9' }}
+                  title={n.formula}
+                >
+                  {n.family === 'mlp' &&
+                    `◉ MLP ${n.activeCount}/${n.activeCount + n.deadCount} active${n.hyperplanesTruncated ? ' · capped' : ''}${n.activation ? ` · ${n.activation}` : ''}`}
+                  {n.family === 'pipeline' &&
+                    `${n.pipeline?.hasToggle ? (pipelineSpace === 'scaled' ? '◈ Scaled space' : '◈ Raw space') : '◈ Raw space only'}${n.pipeline ? ` → ${n.pipeline.innerFamily}` : ''}`}
+                  {n.family === 'onnx_classical' &&
+                    `⬡ ${n.onnx?.operator ?? 'ONNX'} · ${n.onnx?.nNodes ?? 0} nodes`}
+                  {n.family === 'onnx_deep' &&
+                    (n.onnx?.latentAvailable
+                      ? `⬡ latent SVD 2D · ${n.onnx.latentPoints2d.length} pts`
+                      : `⬡ deep graph · ${n.onnx?.nNodes ?? 0} nodes`)}
+                  {n.noAxisSplits && n.family !== 'pipeline' && ' · off-slice splits only'}
                 </div>
               );
             })()}

@@ -32,6 +32,11 @@ export {
   SHAP_ARROW_MIN_LEN,
   SHAP_ARROW_SCALE,
 } from './boosting2dMath';
+export { MlpNeuronHyperplanes2D } from './MlpNeuronHyperplanes2D';
+export { PipelineSpaceToggle2D } from './PipelineSpaceToggle2D';
+export { OnnxLatentManifold2D } from './OnnxLatentManifold2D';
+export { NeuralOverlays2D } from './NeuralOverlays2D';
+export { batchHyperplanePaths, fitLatentToWorld, scaledRulerLabel } from './neural2dMath';
 export { ellipseColor, sigmaCoverage, SIGMA_LEVELS } from './probabilistic2dMath';
 export { clipLineToRectRaw, deriveExactElevationLines, rawToWorld1D } from './linear2dMath';
 export type { WorldSeg } from './linear2dMath';

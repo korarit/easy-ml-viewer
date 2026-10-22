@@ -69,6 +69,12 @@ interface Stage3DState {
   showLeafPolygons: boolean;
   showQuantizedBins: boolean;
   showObliviousGrid: boolean;
+  /** Phase 47 — neural / pipeline / ONNX overlay visibility + space toggle. */
+  showNeuronCuts: boolean;
+  showDeadReLUs: boolean;
+  showLatentManifold: boolean;
+  showSpaceToggle: boolean;
+  pipelineSpace: 'raw' | 'scaled';
   isLoading: boolean;
   stageError: string | null;
   contextLost: boolean;
@@ -101,6 +107,11 @@ interface Stage3DState {
   setShowLeafPolygons: (v: boolean) => void;
   setShowQuantizedBins: (v: boolean) => void;
   setShowObliviousGrid: (v: boolean) => void;
+  setShowNeuronCuts: (v: boolean) => void;
+  setShowDeadReLUs: (v: boolean) => void;
+  setShowLatentManifold: (v: boolean) => void;
+  setShowSpaceToggle: (v: boolean) => void;
+  setPipelineSpace: (v: 'raw' | 'scaled') => void;
   setActiveFrameIndex: (frameIdx: number) => void;
   setAxes: (xIdx: number, yIdx: number) => Promise<void>;
   setSurfaceResolution: (res: number) => Promise<void>;
@@ -182,6 +193,11 @@ export const useStage3DStore = create<Stage3DState>((set, get) => ({
   showLeafPolygons: true,
   showQuantizedBins: true,
   showObliviousGrid: true,
+  showNeuronCuts: true,
+  showDeadReLUs: true,
+  showLatentManifold: true,
+  showSpaceToggle: true,
+  pipelineSpace: 'raw',
   isLoading: false,
   stageError: null,
   contextLost: false,
@@ -240,6 +256,16 @@ export const useStage3DStore = create<Stage3DState>((set, get) => ({
   setShowQuantizedBins: (v) => set({ showQuantizedBins: v }),
 
   setShowObliviousGrid: (v) => set({ showObliviousGrid: v }),
+
+  setShowNeuronCuts: (v) => set({ showNeuronCuts: v }),
+
+  setShowDeadReLUs: (v) => set({ showDeadReLUs: v }),
+
+  setShowLatentManifold: (v) => set({ showLatentManifold: v }),
+
+  setShowSpaceToggle: (v) => set({ showSpaceToggle: v }),
+
+  setPipelineSpace: (v) => set({ pipelineSpace: v }),
 
   setActiveFrameIndex: (frameIdx) => {
     const { points } = get();

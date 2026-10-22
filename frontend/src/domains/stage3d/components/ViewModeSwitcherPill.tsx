@@ -98,6 +98,10 @@ export function LayerVisibilityControls2D() {
   const showLeafPolygons = useStage3DStore((s) => s.showLeafPolygons);
   const showQuantizedBins = useStage3DStore((s) => s.showQuantizedBins);
   const showObliviousGrid = useStage3DStore((s) => s.showObliviousGrid);
+  const showNeuronCuts = useStage3DStore((s) => s.showNeuronCuts);
+  const showDeadReLUs = useStage3DStore((s) => s.showDeadReLUs);
+  const showLatentManifold = useStage3DStore((s) => s.showLatentManifold);
+  const showSpaceToggle = useStage3DStore((s) => s.showSpaceToggle);
   const st = useStage3DStore.getState();
 
   const row = (label: string, checked: boolean, onChange: (v: boolean) => void, hint: string) => (
@@ -143,6 +147,10 @@ export function LayerVisibilityControls2D() {
         {row('Leaf polygons', showLeafPolygons, (v) => st.setShowLeafPolygons(v), 'First-tree leaf boxes + GBM residual cuts (Phase 46)')}
         {row('Quantized bins', showQuantizedBins, (v) => st.setShowQuantizedBins(v), 'HistGBM 255-bin grid + active bin cell (Phase 46)')}
         {row('Oblivious grid', showObliviousGrid, (v) => st.setShowObliviousGrid(v), 'CatBoost symmetric checkerboard + active cell (Phase 46)')}
+        {row('Neuron cuts', showNeuronCuts, (v) => st.setShowNeuronCuts(v), 'MLP first-layer switching lines z_k=0 (Phase 47)')}
+        {row('Dead ReLUs', showDeadReLUs, (v) => st.setShowDeadReLUs(v), 'Dead-neuron flags in this 2D slice (Phase 47)')}
+        {row('Space toggle', showSpaceToggle, (v) => st.setShowSpaceToggle(v), 'Pipeline [Raw] <-> [Scaled] viewport switch (Phase 47)')}
+        {row('Latent plane', showLatentManifold, (v) => st.setShowLatentManifold(v), 'ONNX deep 2D latent SVD inset (Phase 47)')}
       </div>
     </div>
   );

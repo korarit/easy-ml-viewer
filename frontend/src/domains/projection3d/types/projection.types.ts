@@ -334,6 +334,68 @@ export interface Boosting2DPayload {
   formula: string;
 }
 
+/** Phase 47 — one MLP first-layer switching line (mirrors MlpHyperplane2D). */
+export interface MlpHyperplane2D {
+  neuronIdx: number;
+  w1: number;
+  w2: number;
+  bEff: number;
+  segmentRaw: [number, number, number, number] | null;
+  segmentWorld: [number, number, number, number] | null;
+  isDead: boolean;
+  isAlwaysActive: boolean;
+}
+
+/** Phase 47 — pipeline raw<->scaled toggle metadata (mirrors PipelineSpace2D). */
+export interface PipelineSpace2D {
+  hasToggle: boolean;
+  scalerKind: string;
+  innerFamily: string;
+  innerAlgorithm: string;
+  muX: number | null;
+  sigmaX: number | null;
+  muY: number | null;
+  sigmaY: number | null;
+  scaledXRange: [number, number] | null;
+  scaledYRange: [number, number] | null;
+  formula: string;
+}
+
+/** Phase 47 — latent SVD sample point (mirrors OnnxLatent2D.latent_points_2d). */
+export type OnnxLatentPoint2D = [number, number];
+
+/** Phase 47 — ONNX summary + optional latent plane (mirrors OnnxLatent2D). */
+export interface OnnxLatent2D {
+  operator: string;
+  chain: string[];
+  nNodes: number;
+  latentAvailable: boolean;
+  latentPoints2d: OnnxLatentPoint2D[];
+  latentExplainedVariance: number[];
+  penultimateWidth: number;
+  formula: string;
+}
+
+/** Phase 47 — neural / pipeline / ONNX overlay payload (mirrors Neural2DGeometry). */
+export interface Neural2DPayload {
+  family: 'mlp' | 'pipeline' | 'onnx_classical' | 'onnx_deep' | string;
+  algorithm: string;
+  xFeature: string;
+  yFeature: string;
+  xFeatureIdx: number;
+  yFeatureIdx: number;
+  activation: string | null;
+  hyperplanes: MlpHyperplane2D[];
+  hyperplanesTruncated: boolean;
+  deadCount: number;
+  activeCount: number;
+  activeRatio: number | null;
+  pipeline: PipelineSpace2D | null;
+  onnx: OnnxLatent2D | null;
+  noAxisSplits: boolean;
+  formula: string;
+}
+
 /** Phase 46 — per-frame boosting payload (mirrors BoostFrame2DResponse). */
 export interface BoostFrame2DPayload {
   xFeature: string;
@@ -373,6 +435,8 @@ export interface Contour2DPayload {
   trees2d: Trees2DPayload | null;
   /** Phase 46 — GBM cuts / hist bins / xgb+lgbm polygons+SHAP / catboost checkerboard; null when N/A. */
   boosting2d: Boosting2DPayload | null;
+  /** Phase 47 — MLP neuron cuts / pipeline toggle / ONNX latent plane; null when N/A. */
+  neural2d: Neural2DPayload | null;
   computationTimeMs: number;
 }
 
