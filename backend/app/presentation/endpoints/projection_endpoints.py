@@ -12,6 +12,7 @@ from app.application.projection_orchestrator import (
     ProjectionDualCompare2DRequest,
     ProjectionKnnFrameRequest,
     ProjectionOrchestrator,
+    ProjectionPointIntelligenceRequest,
     ProjectionSurfaceRequest,
 )
 
@@ -55,6 +56,15 @@ async def compute_boost_frame_2d(
     orchestrator: ProjectionOrchestrator = Depends(get_projection_orchestrator),
 ) -> dict[str, Any]:
     entity = await orchestrator.build_boost_frame(body)
+    return entity.model_dump(mode="json")
+
+
+@router.post("/point-intelligence-2d", summary="Phase 49: 2D point-intelligence hexbins + density contours")
+async def compute_point_intelligence_2d(
+    body: ProjectionPointIntelligenceRequest,
+    orchestrator: ProjectionOrchestrator = Depends(get_projection_orchestrator),
+) -> dict[str, Any]:
+    entity = await orchestrator.build_point_intelligence(body)
     return entity.model_dump(mode="json")
 
 

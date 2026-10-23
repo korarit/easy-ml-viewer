@@ -79,6 +79,19 @@ class ProjectionContourRequest(BaseModel):
     selected_row_indices: list[int] = Field(default_factory=list)
 
 
+class ProjectionPointIntelligenceRequest(BaseModel):
+    """Phase 49 — Universal 2D point-intelligence aggregation (hexbin + density)."""
+
+    dataset_id: str = Field(min_length=1)
+    model_id: str = Field(min_length=1)
+    mapping_id: str = Field(min_length=1)
+    x_feature: str = Field(min_length=1)
+    y_feature: str = Field(min_length=1)
+    hex_radius: float = Field(default=0.45, gt=0.05, le=2.0)
+    residual_eps: float = Field(default=0.5, ge=0.0)
+    selected_row_indices: list[int] = Field(default_factory=list)
+
+
 class ProjectionKnnFrameRequest(BaseModel):
     """Phase 43 — per-frame KNN radar state for the 2D planar viewport."""
 
@@ -404,6 +417,145 @@ class ProjectionOrchestrator:
     async def build_contour(self, req: ProjectionContourRequest) -> Any:
         """Phase 41 — dense 2D decision-boundary grid (delegates to the shared resolver)."""
         return await _resolve_contour_frame(req, self)
+
+    async def build_point_intelligence(self, req: ProjectionPointIntelligenceRequest) -> Any:
+        """Phase 49 — hexbin + density aggregation over the queued trajectory points.
+
+        World coordinates reuse the exact contour-viewport scales so hexbin
+        centers line up 1:1 with the ``Stage2DCanvas`` overlay. Predictions
+        come from chunked ``predict_batch`` (≤2,500/chunk); actuals from the
+        mapping target column when present.
+        """
+        from app.domains.simulation.point_intelligence_service import (
+            DEFAULT_HEX_RADIUS,
+            build_point_intelligence,
+        )
+        from app.domains.spatial_projection.point_intelligence_entities import (
+            PointIntelligenceResponse,
+        )
+
+        started = time.perf_counter()
+        mapping = self._mappings.get(req.mapping_id)
+        if mapping.dataset_id != req.dataset_id or mapping.model_id != req.model_id:
+            raise DomainException(
+                code="MAPPING_MISMATCH",
+                message="Mapping does not belong to the given dataset/model pair",
+                details={"mapping_id": req.mapping_id},
+                http_status=422,
+            )
+        items = sorted(mapping.items, key=lambda x: x.feature_index)
+        if not items:
+            raise DomainException(
+                code="PROJECTION_NO_FEATURES",
+                message="Mapping has no feature columns — map at least one feature first",
+                http_status=422,
+            )
+        resolved_x = _resolve_feature_index(items, req.x_feature)
+        resolved_y = _resolve_feature_index(items, req.y_feature)
+        if resolved_x is None or resolved_y is None:
+            raise DomainException(
+                code="PROJECTION_UNKNOWN_FEATURE",
+                message=f"Unknown feature(s): x='{req.x_feature}', y='{req.y_feature}'",
+                http_status=422,
+            )
+        if resolved_x == resolved_y and len(items) >= 2:
+            raise DomainException(
+                code="PROJECTION_DUPLICATE_AXES",
+                message="X and Y axes must be different features (use swapAxes on the client)",
+                http_status=422,
+            )
+        selected = [int(i) for i in (req.selected_row_indices or []) if int(i) >= 0]
+        if len(selected) > MAX_QUEUE_POINTS:
+            raise DomainException(
+                code="PROJECTION_TOO_MANY_POINTS",
+                message=f"Select at most {MAX_QUEUE_POINTS} rows per scene",
+                http_status=422,
+            )
+
+        feature_cols = [i.dataset_column_name for i in items if i.dataset_column_name]
+        parquet_path = self._datasets._require(req.dataset_id)
+        import pyarrow.parquet as pq
+
+        pf = pq.ParquetFile(parquet_path, memory_map=True)
+        total_rows = int(pf.metadata.num_rows)
+        all_columns = set(pf.schema.names)
+        for idx in selected:
+            if idx >= total_rows:
+                raise DomainException(
+                    code="PROJECTION_ROW_OUT_OF_RANGE",
+                    message=f"Row index {idx} exceeds dataset size ({total_rows} rows)",
+                    http_status=422,
+                )
+
+        model_obj = self._models.get_model(req.model_id)
+        _, final_est, _ = UniversalSchemaDetector.unwrap_model_container(model_obj)
+        adapter = ModelRegistry.resolve_adapter(final_est, ".joblib")
+
+        df = self._datasets.load_dataframe(req.dataset_id, columns=feature_cols)
+        try:
+            df = df.reindex(columns=feature_cols)
+            X = TypeCastingEngine.build_float32_matrix(df, items)
+        finally:
+            del df
+
+        from app.core.math_3d import WorldCoordinateScaler
+        from app.domains.simulation.contour_2d_generator import PREDICT_CHUNK_SIZE
+
+        feature_names = [i.dataset_column_name or i.model_feature_name for i in items]
+        x_scale = WorldCoordinateScaler.build_axis_scale(feature_names[resolved_x], X[:, resolved_x])
+        y_scale = WorldCoordinateScaler.build_axis_scale(feature_names[resolved_y], X[:, resolved_y])
+
+        rows = np.asarray([r for r in selected if 0 <= r < X.shape[0]], dtype=np.int64)
+        if rows.size:
+            qx = WorldCoordinateScaler.to_world_coords(X[rows][:, resolved_x], x_scale)
+            qy = WorldCoordinateScaler.to_world_coords(X[rows][:, resolved_y], y_scale)
+            world_xy = np.ascontiguousarray(
+                np.stack([qx, qy], axis=1), dtype=np.float32
+            )
+            mat = np.ascontiguousarray(X[rows], dtype=np.float32)
+            preds: list[float] = []
+            off = 0
+            while off < mat.shape[0]:
+                chunk = np.ascontiguousarray(mat[off:off + PREDICT_CHUNK_SIZE], dtype=np.float32)
+                r = adapter.predict_batch(model_obj, chunk)
+                preds.extend(float(v) for v in list(r.predictions))
+                del chunk, r
+                off += PREDICT_CHUNK_SIZE
+            y_pred = np.asarray(preds, dtype=np.float64)
+            del mat
+        else:
+            world_xy = np.empty((0, 2), dtype=np.float32)
+            y_pred = np.empty((0,), dtype=np.float64)
+        del X
+
+        y_true: np.ndarray | None = None
+        if mapping.target_column_name and mapping.target_column_name in all_columns:
+            tdf = self._datasets.load_dataframe(req.dataset_id, columns=[mapping.target_column_name])
+            try:
+                numeric = pd.to_numeric(tdf[mapping.target_column_name], errors="coerce").to_numpy(
+                    dtype=np.float64, copy=True
+                )
+                if rows.size and np.isfinite(numeric).any():
+                    y_true = np.asarray([float(numeric[r]) if np.isfinite(numeric[r]) else np.nan for r in rows.tolist()])
+            finally:
+                del tdf
+
+        residuals: np.ndarray | None = None
+        if y_true is not None and y_pred.size == y_true.size and y_true.size:
+            with np.errstate(invalid="ignore"):
+                residuals = y_true - y_pred
+
+        entity: PointIntelligenceResponse = await asyncio.to_thread(
+            build_point_intelligence,
+            world_xy,
+            y_true,
+            y_pred if y_pred.size else None,
+            residuals,
+            float(req.hex_radius or DEFAULT_HEX_RADIUS),
+            float(req.residual_eps),
+        )
+        entity.computation_time_ms = round((time.perf_counter() - started) * 1000.0, 2)
+        return entity
 
     async def build_knn_frame(self, req: ProjectionKnnFrameRequest) -> KnnFrame2DResponse:
         """Phase 43 — per-frame KNN radar state (one ``kneighbors`` call, < 5 ms)."""
