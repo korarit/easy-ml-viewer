@@ -322,3 +322,14 @@ flowchart LR
 - **[Phase 46](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-46-model-group-gradient-boosting-2d-geometry.md)**: Model Group 5 (Gradient Boosting Heavyweights) - 2D Leaf Polygons, Histogram Terraces, Oblivious Grids & TreeSHAP Vectors
 - **[Phase 47](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-47-model-group-neural-pipeline-onnx-2d-geometry.md)**: Model Group 6 (Neural Networks, Pipelines & Universal ONNX) - 2D Hyperplane Cuts, Transformed-Space Overlays & Latent 2D Projection
 - **[Phase 48](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-48-dual-mode-compare-mlv-baker-export-and-hardening.md)**: Dual-Mode Synchronized Compare (2D/3D), 2D .mlv Persistence, High-Res Vector SVG/Video Export & Hardening
+
+
+### ส่วนที่ 9: 2D Point Intelligence & Advanced Data Representation Suite (Phases 49 - 56)
+- **[Phase 49](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-49-2d-point-intelligence-core-engine.md)**: Universal 2D Point Intelligence Core Engine — Comet Trails, Dual-Ring Glyphs, Error Lens & Hexbin Density
+- **[Phase 50](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-50-point-intelligence-linear-models.md)**: Point Intelligence Integration: Linear & Generalized Linear Models (OLS, Logistic, Ridge, Lasso, ElasticNet, SGD)
+- **[Phase 51](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-51-point-intelligence-distance-kernel-models.md)**: Point Intelligence Integration: Distance & Kernel Models (KNN & SVM)
+- **[Phase 52](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-52-point-intelligence-probabilistic-models.md)**: Point Intelligence Integration: Probabilistic & Discriminant Models (Naive Bayes, LDA, QDA)
+- **[Phase 53](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-53-point-intelligence-trees-ensembles.md)**: Point Intelligence Integration: Trees & Bagging Ensembles (DecisionTree, RandomForest, ExtraTrees, AdaBoost)
+- **[Phase 54](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-54-point-intelligence-gradient-boosting.md)**: Point Intelligence Integration: Gradient Boosting Heavyweights (GBM, HistGBM, XGBoost, LightGBM, CatBoost)
+- **[Phase 55](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-55-point-intelligence-neural-pipeline-onnx.md)**: Point Intelligence Integration: Neural Networks, Pipelines & Universal ONNX (MLP, Scaled Pipelines, ONNX Latents)
+- **[Phase 56](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-56-point-intelligence-hardening-and-persistence.md)**: 2D Point Intelligence Unified Controls, .mlv Multi-Track Recording & Hardening

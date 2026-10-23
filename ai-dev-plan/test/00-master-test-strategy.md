@@ -1,6 +1,6 @@
-# Master Testing Strategy & 48-Phase Synchronized Quality Assurance Blueprint (`ai-dev-plan/test/`)
+# Master Testing Strategy & 56-Phase Synchronized Quality Assurance Blueprint (`ai-dev-plan/test/`)
 
-> **เป้าหมายสูงสุดของการทดสอบ (Testing Vision)**: รับประกันว่าระบบ **Easy ML Viewer** ในทุกๆ Phase ตั้งแต่ **Phase 01 ถึง Phase 48** มีชุดทดสอบแบบ **1-ต่อ-1 (`test-phase-01` $\leftrightarrow$ `phase-01` จนถึง `test-phase-48` $\leftrightarrow$ `phase-48`)** ที่ตรวจสอบครบทั้ง:
+> **เป้าหมายสูงสุดของการทดสอบ (Testing Vision)**: รับประกันว่าระบบ **Easy ML Viewer** ในทุกๆ Phase ตั้งแต่ **Phase 01 ถึง Phase 56** มีชุดทดสอบแบบ **1-ต่อ-1 (`test-phase-01` $\leftrightarrow$ `phase-01` จนถึง `test-phase-56` $\leftrightarrow$ `phase-56`)** ที่ตรวจสอบครบทั้ง:
 > 1. **ความถูกต้องทางคณิตศาสตร์ 100% (Mathematical & Internal Flow Parity)**
 > 2. **ความสมบูรณ์ของ UI Feature List & UX Flows (Component States, Keyboard Shortcuts, 2D/3D Dual-Mode Interactions)**
 > 3. **การควบคุมหน่วยความจำและ VRAM อย่างเข้มงวด (Memory Check Plan & Zero-Leak Guarantee)**
@@ -19,7 +19,7 @@ flowchart TD
     T --> P1["1. DDD Domain & Architecture Lint Tests (AST Boundary Check)"]
     T --> P2["2. Mathematical & Internal Flow Parity Tests (Pytest + Synthetic Fixtures)"]
     T --> P3["3. REST/Binary API & Schema Contract Tests (FastAPI httpx AsyncClient)"]
-    T --> P4["4. Frontend UI State, UX Flow & 3D Scene Tests (Vitest + RTL + WebGL Spy)"]
+    T --> P4["4. Frontend UI State, UX Flow & 3D/2D Scene Tests (Vitest + RTL + WebGL Spy)"]
     T --> P5["5. Memory Check & VRAM Disposal Tests (psutil RSS + renderer.info.memory)"]
     T --> P6["6. Edge Case Matrix Verification (6-8 Adversarial Cases per Phase)"]
 ```
@@ -66,7 +66,7 @@ easy-ml-viewer/
 
 ---
 
-## 4. สารบัญแผนการทดสอบทั้ง 40 Phases (Synced 1-to-1 กับ `ai-dev-plan/dev/`)
+## 4. สารบัญแผนการทดสอบทั้ง 56 Phases (Synced 1-to-1 กับ `ai-dev-plan/dev/`)
 
 ### 🧱 Part 1: Base Platform, DDD Core, First Simple Model, 3D VCR Studio, What-If, `.mlv` & Compute Engine (Phases 01 - 17)
 
@@ -169,3 +169,18 @@ easy-ml-viewer/
 | **46** | **[test-phase-46-model-group-gradient-boosting-2d-geometry.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-46-model-group-gradient-boosting-2d-geometry.md)** | [phase-46](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-46-model-group-gradient-boosting-2d-geometry.md) | XGBoost 2D TreeSHAP Vectors Parity, CatBoost Oblivious $2^D$ Checkerboard Symmetry & HistGBM 255-Bin Grids |
 | **47** | **[test-phase-47-model-group-neural-pipeline-onnx-2d-geometry.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-47-model-group-neural-pipeline-onnx-2d-geometry.md)** | [phase-47](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-47-model-group-neural-pipeline-onnx-2d-geometry.md) | MLP First-Layer Hyperplanes $z_k^{(1)}=0$, Dead ReLUs Detection, Pipeline Raw/Scaled Inversion & ONNX Latent SVD |
 | **48** | **[test-phase-48-dual-mode-compare-mlv-baker-export-and-hardening.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-48-dual-mode-compare-mlv-baker-export-and-hardening.md)** | [phase-48](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-48-dual-mode-compare-mlv-baker-export-and-hardening.md) | Dual 2D Conflict Area Mask, `.mlv` 2D Serialization Roundtrip, SVG Export XML Validation & 100k-Row 2D Stress SLA |
+
+---
+
+### 🔬 Part 9: 2D Point Intelligence & Advanced Representation Test Suites (Phases 49 - 56)
+
+| Test Phase | ไฟล์แผนการทดสอบ (`ai-dev-plan/test/`) | คู่ขนานกับไฟล์ Dev (`ai-dev-plan/dev/`) | จุดเน้นการทดสอบหลัก |
+| :---: | :--- | :--- | :--- |
+| **49** | **[test-phase-49-2d-point-intelligence-core-engine.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-49-2d-point-intelligence-core-engine.md)** | [phase-49](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-49-2d-point-intelligence-core-engine.md) | Hexbin Tessellation $R_{\text{hex}}$ Spacing, Dual-Ring Color Contrast, Comet Tail Decay Kernel & Error Lens Filter |
+| **50** | **[test-phase-50-point-intelligence-linear-models.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-50-point-intelligence-linear-models.md)** | [phase-50](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-50-point-intelligence-linear-models.md) | Orthogonal Projection Spoke Coordinates $d_{\perp}$, SGD Margin Corridor Detection & Vertical Residual Stems |
+| **51** | **[test-phase-51-point-intelligence-distance-kernel-models.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-51-point-intelligence-distance-kernel-models.md)** | [phase-51](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-51-point-intelligence-distance-kernel-models.md) | SVR $\epsilon$-Tube Slack Variables ($\xi_i, \xi_i^*$), Bounded vs Unbounded Support Vector Halos & KNN Vote Arcs |
+| **52** | **[test-phase-52-point-intelligence-probabilistic-models.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-52-point-intelligence-probabilistic-models.md)** | [phase-52](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-52-point-intelligence-probabilistic-models.md) | Shannon Entropy Trail Coloring, Centroid Attractor Spoke Distances & Bivariate Normal Divergence Hexbins |
+| **53** | **[test-phase-53-point-intelligence-trees-ensembles.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-53-point-intelligence-trees-ensembles.md)** | [phase-53](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-53-point-intelligence-trees-ensembles.md) | Random Forest Consensus Agreement Variance, AdaBoost Weight Scaling $\sqrt{\omega_i}$ & Leaf Minority Outlier Spokes |
+| **54** | **[test-phase-54-point-intelligence-gradient-boosting.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-54-point-intelligence-gradient-boosting.md)** | [phase-54](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-54-point-intelligence-gradient-boosting.md) | Functional Margin $y_i F(\mathbf{x}_i)$ 3-State Classification, TreeSHAP Push Vectors & Negative Gradient Pseudo-Residuals |
+| **55** | **[test-phase-55-point-intelligence-neural-pipeline-onnx.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-55-point-intelligence-neural-pipeline-onnx.md)** | [phase-55](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-55-point-intelligence-neural-pipeline-onnx.md) | Softmax Logit Gap ($\Delta z$), Raw $\leftrightarrow$ Scaled Space Bijective Mapping & Data Desert Hazard Detection |
+| **56** | **[test-phase-56-point-intelligence-hardening-and-persistence.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-56-point-intelligence-hardening-and-persistence.md)** | [phase-56](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-56-point-intelligence-hardening-and-persistence.md) | Global Keybindings (`T`, `R`, `E`, `H`), `.mlv` Point Intelligence Track Serialization Roundtrip, SVG Node Tree & 60 FPS Gate |
