@@ -84,6 +84,33 @@ export {
   MARGIN_RING_COLOR,
 } from './linearPointIntel2dMath';
 export type { WorldLine, OrthogonalSpoke } from './linearPointIntel2dMath';
+export { SvmSupportVectorHalo2D } from './SvmSupportVectorHalo2D';
+export { SvrSlackSpoke2D } from './SvrSlackSpoke2D';
+export type { SvrSlackSpokeDatum } from './SvrSlackSpoke2D';
+export { KnnVoteArcRing2D } from './KnnVoteArcRing2D';
+export { KnnDensityHexbin2D } from './KnnDensityHexbin2D';
+export { DistancePointIntelOverlays2D } from './DistancePointIntelOverlays2D';
+export {
+  SV_HALO_ON_MARGIN_COLOR,
+  SV_HALO_VIOLATES_COLOR,
+  SV_HALO_SUPPORT_COLOR,
+  SVR_SLACK_XI_COLOR,
+  SVR_SLACK_XI_STAR_COLOR,
+  KNN_DISCORDANCE_COLOR,
+  knnCentroid2D,
+  detectNeighborSwaps,
+  haloColor,
+  haloDiamondRadius,
+  diamondPath,
+  voteArcSegments,
+  arcDonutPath,
+  svrSlackSpoke,
+  knnDensity,
+  discordantRanks,
+  densityTiers,
+  spokeToSvg,
+} from './distancePointIntel2dMath';
+export type { KnnNeighborPoint, VoteArcSegment, SvrSlackSpoke } from './distancePointIntel2dMath';
 export { MlpNeuronHyperplanes2D } from './MlpNeuronHyperplanes2D';
 export { PipelineSpaceToggle2D } from './PipelineSpaceToggle2D';
 export { OnnxLatentManifold2D } from './OnnxLatentManifold2D';
