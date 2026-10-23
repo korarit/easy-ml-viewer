@@ -7,6 +7,7 @@ import { DecisionBoundaryContour2D, wy } from './DecisionBoundaryContour2D';
 import { HexbinOverlay2D, type HexbinMode } from './surfaces_2d/HexbinOverlay2D';
 import { PointDisplayToolbar2D } from './surfaces_2d/PointDisplayToolbar2D';
 import { PointIntelligenceLayer2D } from './surfaces_2d/PointIntelligenceLayer2D';
+import { LinearPointIntelOverlays2D } from './surfaces_2d/LinearPointIntelOverlays2D';
 import { LinearOverlays2D } from './surfaces_2d/LinearOverlays2D';
 import { DistanceOverlays2D } from './surfaces_2d/DistanceOverlays2D';
 import { ProbabilisticOverlays2D } from './surfaces_2d/ProbabilisticOverlays2D';
@@ -309,7 +310,23 @@ export function Stage2DCanvas() {
                 colormap={colormap}
                 heatmapMin={hMin}
                 heatmapMax={hMax}
+                trailWeights={
+                  contourData?.linear2d && !contourData.linear2d.bothZeroed
+                    ? { w1: contourData.linear2d.w1, w2: contourData.linear2d.w2 }
+                    : null
+                }
               />
+              {/* Phase 50 — linear-family spokes, margin rings, stems, hexbin alignment. */}
+              {contourData?.linear2d && (
+                <LinearPointIntelOverlays2D
+                  linear2d={contourData.linear2d}
+                  points={points}
+                  activeFrameIndex={activeFrameIndex}
+                  hexbinCells={pointIntel?.hexbinCells ?? []}
+                  xRangeRaw={contourData.xRangeRaw}
+                  yRangeRaw={contourData.yRangeRaw}
+                />
+              )}
               <WhatIfDisplacementVector2D />
               <ActiveDataPointReticle2D points={points} activeFrameIndex={activeFrameIndex} />
               {/* Precision rulers (raw values, inside the frame to avoid clipping) */}
