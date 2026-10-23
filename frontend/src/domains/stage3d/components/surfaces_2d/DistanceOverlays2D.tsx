@@ -27,6 +27,10 @@ export function DistanceOverlays2D({
   const showSpiderLines = useStage3DStore((s) => s.showSpiderLines);
   const showSvHalos = useStage3DStore((s) => s.showSvHalos);
   const showSvmMargins = useStage3DStore((s) => s.showSvmMargins);
+  // Phase 51 — when the point-intel Dual-Ring layer is on, the enriched
+  // SvmSupportVectorHalo2D (diamonds + status-colored dual rings) takes over
+  // so the two halo layers never double-draw the same SVs.
+  const showDualRings = useStage3DStore((s) => s.showDualRings);
 
   const svm = contourData.svm2d;
   const marginLevels = contourData.contours.filter((c) => c.kind === 'margin');
@@ -51,7 +55,7 @@ export function DistanceOverlays2D({
   return (
     <g aria-label="Distance and kernel overlays">
       {showSvmMargins && <SvmKernelContour2D marginLevels={marginLevels} />}
-      {showSvHalos && <SupportVectorRings2D halos={halos} />}
+      {showSvHalos && !showDualRings && <SupportVectorRings2D halos={halos} />}
       {radarVisible && (
         <KnnRadar2D
           centerX={knnFrame.queryWorld[0]}

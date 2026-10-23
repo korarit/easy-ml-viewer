@@ -8,6 +8,7 @@ import { HexbinOverlay2D, type HexbinMode } from './surfaces_2d/HexbinOverlay2D'
 import { PointDisplayToolbar2D } from './surfaces_2d/PointDisplayToolbar2D';
 import { PointIntelligenceLayer2D } from './surfaces_2d/PointIntelligenceLayer2D';
 import { LinearPointIntelOverlays2D } from './surfaces_2d/LinearPointIntelOverlays2D';
+import { DistancePointIntelOverlays2D } from './surfaces_2d/DistancePointIntelOverlays2D';
 import { LinearOverlays2D } from './surfaces_2d/LinearOverlays2D';
 import { DistanceOverlays2D } from './surfaces_2d/DistanceOverlays2D';
 import { ProbabilisticOverlays2D } from './surfaces_2d/ProbabilisticOverlays2D';
@@ -166,6 +167,16 @@ export function Stage2DCanvas() {
     : [];
 
   const rulerTicks = [-5, -2.5, 0, 2.5, 5];
+  // Phase 43/51 — class → beat color shared by the hexbin overlay and the
+  // Phase-51 KNN vote-breakdown arcs.
+  const classColorFor = (cls: string | number | null): string => {
+    if (cls === null || !contourData) return '#94a3b8';
+    const idx = contourData.classes.findIndex((c) => c === cls || String(c) === String(cls));
+    const n = contourData.classes.length;
+    const t = n < 2 ? 0.5 : Math.max(0, idx) / (n - 1);
+    const [r, g, b] = sampleColormap(colormap, t);
+    return `rgb(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)})`;
+  };
   const rawLabel = (w: number, min: number, max: number): string => {
     const v = min + ((w + 5) / 10) * (max - min);
     const abs = Math.abs(v);
@@ -270,14 +281,7 @@ export function Stage2DCanvas() {
                   cells={pointIntel.hexbinCells}
                   maxBinCount={pointIntel.maxBinCount}
                   mode={hexbinMode}
-                  classColor={(cls) => {
-                    if (cls === null || !contourData) return '#94a3b8';
-                    const idx = contourData.classes.findIndex((c) => c === cls || String(c) === String(cls));
-                    const n = contourData.classes.length;
-                    const t = n < 2 ? 0.5 : Math.max(0, idx) / (n - 1);
-                    const [r, g, b] = sampleColormap(colormap, t);
-                    return `rgb(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)})`;
-                  }}
+                  classColor={classColorFor}
                   visible
                 />
               )}
@@ -316,7 +320,7 @@ export function Stage2DCanvas() {
                     : null
                 }
               />
-              {/* Phase 50 — linear-family spokes, margin rings, stems, hexbin alignment. */}
+              {/* Phase 51 — distance/kernel spokes, vote arcs, halos, density tiers. */}
               {contourData?.linear2d && (
                 <LinearPointIntelOverlays2D
                   linear2d={contourData.linear2d}
@@ -325,6 +329,20 @@ export function Stage2DCanvas() {
                   hexbinCells={pointIntel?.hexbinCells ?? []}
                   xRangeRaw={contourData.xRangeRaw}
                   yRangeRaw={contourData.yRangeRaw}
+                />
+              )}
+              {(contourData?.knn2d || contourData?.svm2d) && (
+                <DistancePointIntelOverlays2D
+                  svm2d={contourData.svm2d}
+                  knnFrame={knnFrame}
+                  points={points}
+                  activeFrameIndex={activeFrameIndex}
+                  hexbinCells={pointIntel?.hexbinCells ?? []}
+                  // ε / per-bin R̄_K are not in the 2D payload yet → those two
+                  // layers stay honestly dormant until the backend ships them.
+                  hexbinDensities={null}
+                  svrEpsilon={null}
+                  classColor={classColorFor}
                 />
               )}
               <WhatIfDisplacementVector2D />
