@@ -58,6 +58,32 @@ export {
   hexbinFill,
 } from './pointIntelligence2dMath';
 export type { GlyphShape } from './pointIntelligence2dMath';
+export { LinearOrthogonalSpoke2D } from './LinearOrthogonalSpoke2D';
+export { LinearMarginDualRing2D } from './LinearMarginDualRing2D';
+export type { LinearMarginRing } from './LinearMarginDualRing2D';
+export { LinearResidualStem2D } from './LinearResidualStem2D';
+export type { LinearResidualStem } from './LinearResidualStem2D';
+export { LinearHexbinAlignment2D } from './LinearHexbinAlignment2D';
+export { LinearPointIntelOverlays2D } from './LinearPointIntelOverlays2D';
+export {
+  worldLine,
+  zScoreRaw,
+  expit,
+  trailSigns,
+  trailSignColor,
+  isMarginViolator,
+  logisticRingThickness,
+  orthogonalSpoke,
+  worldDistToLine,
+  hexbinBoundaryFlags,
+  errorDistanceCorrelation,
+  segToSvg,
+  TRAIL_UP_COLOR,
+  TRAIL_DOWN_COLOR,
+  TRAIL_FLAT_COLOR,
+  MARGIN_RING_COLOR,
+} from './linearPointIntel2dMath';
+export type { WorldLine, OrthogonalSpoke } from './linearPointIntel2dMath';
 export { MlpNeuronHyperplanes2D } from './MlpNeuronHyperplanes2D';
 export { PipelineSpaceToggle2D } from './PipelineSpaceToggle2D';
 export { OnnxLatentManifold2D } from './OnnxLatentManifold2D';

@@ -12,6 +12,7 @@ import {
   residualSpokeEnd,
   type GlyphShape,
 } from './pointIntelligence2dMath';
+import { trailSigns } from './linearPointIntel2dMath';
 
 export interface PointIntelligenceLayer2DProps {
   points: TrajectoryPoint3D[];
@@ -22,6 +23,8 @@ export interface PointIntelligenceLayer2DProps {
   heatmapMin: number;
   heatmapMax: number;
   trailWindow?: number;
+  /** Phase 50 — raw-space plane weights for trail-ascent coloring (linear family). */
+  trailWeights?: { w1: number; w2: number } | null;
 }
 
 function valueColor(
@@ -68,6 +71,7 @@ export function PointIntelligenceLayer2D({
   heatmapMin,
   heatmapMax,
   trailWindow = 8,
+  trailWeights = null,
 }: PointIntelligenceLayer2DProps) {
   const showCometTrails = useStage3DStore((s) => s.showCometTrails);
   const showDualRings = useStage3DStore((s) => s.showDualRings);
@@ -97,17 +101,29 @@ export function PointIntelligenceLayer2D({
 
   return (
     <g aria-label="Point intelligence layer">
-      {showCometTrails && (
-        <CometTrail2D
-          points={points
+      {showCometTrails &&
+        (() => {
+          const rendered = points
             .map((p, f) => ({ p, f }))
-            .filter(({ f }) => !showErrorsOnly || isError(f) || f === active)
-            .map(({ p }) => ({ x: p.world_x, y: p.world_y }))}
-          activeFrame={Math.min(active, points.length - 1)}
-          window={trailWindow}
-          visible
-        />
-      )}
+            .filter(({ f }) => !showErrorsOnly || isError(f) || f === active);
+          const signs = trailWeights
+            ? trailSigns(
+                rendered.map(({ p }) => ({ x: p.raw_x, y: p.raw_y })),
+                trailWeights.w1,
+                trailWeights.w2,
+              )
+            : undefined;
+          const activeRendered = rendered.findIndex(({ f }) => f === active);
+          return (
+            <CometTrail2D
+              points={rendered.map(({ p }) => ({ x: p.world_x, y: p.world_y }))}
+              activeFrame={activeRendered >= 0 ? activeRendered : rendered.length - 1}
+              window={trailWindow}
+              signs={signs}
+              visible
+            />
+          );
+        })()}
       <ResidualSpoke2D segments={spokes} visible={showResidualSpokes} />
       <g aria-label="Trajectory points">
         {points.map((p, f) => {

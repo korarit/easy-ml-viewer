@@ -1,5 +1,6 @@
 import { wy } from '../DecisionBoundaryContour2D';
 import { cometAlpha, cometStrokeWidth } from './pointIntelligence2dMath';
+import { trailSignColor } from './linearPointIntel2dMath';
 
 export interface CometTrail2DProps {
   /** World-space trail points in frame order. */
@@ -9,6 +10,8 @@ export interface CometTrail2DProps {
   window?: number;
   stroke?: string;
   visible?: boolean;
+  /** Phase 50 — per-segment ascent signs (+1 green / −1 orange / 0 flat). */
+  signs?: number[];
 }
 
 /**
@@ -24,6 +27,7 @@ export function CometTrail2D({
   window = 8,
   stroke = '#22d3ee',
   visible = true,
+  signs,
 }: CometTrail2DProps) {
   if (!visible || points.length < 2) return null;
   const w = Math.max(1, Math.round(window));
@@ -53,7 +57,7 @@ export function CometTrail2D({
           y1={s.y1}
           x2={s.x2}
           y2={s.y2}
-          stroke={stroke}
+          stroke={signs && signs[lo + i] !== undefined ? trailSignColor(signs[lo + i]!, stroke) : stroke}
           strokeWidth={s.width}
           opacity={s.opacity}
           strokeLinecap="round"
