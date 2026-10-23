@@ -6,6 +6,7 @@ import type {
   KnnFrame2DPayload,
   LodLevel,
   PinningMode,
+  PointIntelligencePayload,
   ProjectionMode,
   SurfaceMeshPayload,
   ZMode,
@@ -830,6 +831,73 @@ export async function fetchBoostFrame2D(
           method: data.shap.method,
         }
       : null,
+    computationTimeMs: data.computation_time_ms,
+  };
+}
+
+/** Phase 49 — typed client for POST /api/v1/projection/point-intelligence-2d. */
+export interface FetchPointIntelligenceParams {
+  datasetId: string;
+  modelId: string;
+  mappingId: string;
+  xFeature: string;
+  yFeature: string;
+  hexRadius?: number;
+  residualEps?: number;
+  selectedRowIndices: number[];
+}
+
+interface PointIntelligenceResponse {
+  hexbin_cells: Array<{
+    center_x: number;
+    center_y: number;
+    radius: number;
+    count: number;
+    dominant_class: number | null;
+    mean_residual: number;
+    error_rate: number;
+  }>;
+  density_contours: Array<{
+    density_threshold: number;
+    segments: Array<[number, number, number, number]>;
+  }>;
+  max_bin_count: number;
+  computation_time_ms: number;
+}
+
+export async function fetchPointIntelligence2D(
+  params: FetchPointIntelligenceParams,
+  signal?: AbortSignal,
+): Promise<PointIntelligencePayload> {
+  const data = await apiFetch<PointIntelligenceResponse>('/api/v1/projection/point-intelligence-2d', {
+    method: 'POST',
+    body: JSON.stringify({
+      dataset_id: params.datasetId,
+      model_id: params.modelId,
+      mapping_id: params.mappingId,
+      x_feature: params.xFeature,
+      y_feature: params.yFeature,
+      hex_radius: params.hexRadius ?? 0.45,
+      residual_eps: params.residualEps ?? 0.5,
+      selected_row_indices: params.selectedRowIndices,
+    }),
+    signal,
+  });
+  return {
+    hexbinCells: data.hexbin_cells.map((c) => ({
+      centerX: c.center_x,
+      centerY: c.center_y,
+      radius: c.radius,
+      count: c.count,
+      dominantClass: c.dominant_class,
+      meanResidual: c.mean_residual,
+      errorRate: c.error_rate,
+    })),
+    densityContours: data.density_contours.map((l) => ({
+      densityThreshold: l.density_threshold,
+      segments: l.segments,
+    })),
+    maxBinCount: data.max_bin_count,
     computationTimeMs: data.computation_time_ms,
   };
 }

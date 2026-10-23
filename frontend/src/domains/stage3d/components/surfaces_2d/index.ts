@@ -32,6 +32,32 @@ export {
   SHAP_ARROW_MIN_LEN,
   SHAP_ARROW_SCALE,
 } from './boosting2dMath';
+export { CometTrail2D } from './CometTrail2D';
+export { DualRingPoint2D } from './DualRingPoint2D';
+export { ResidualSpoke2D } from './ResidualSpoke2D';
+export { HexbinOverlay2D } from './HexbinOverlay2D';
+export type { HexbinMode } from './HexbinOverlay2D';
+export { PointIntelligenceLayer2D } from './PointIntelligenceLayer2D';
+export { PointDisplayToolbar2D } from './PointDisplayToolbar2D';
+export {
+  GHOST_ALPHA,
+  GHOST_RADIUS,
+  RING_INNER_RADIUS,
+  RING_OUTER_RADIUS,
+  RING_THICKNESS,
+  RING_CONTRAST_WIDTH,
+  cometSigma,
+  cometAlpha,
+  cometTrailAlphas,
+  cometStrokeWidth,
+  contrastStroke,
+  errorsOnlyFrames,
+  residualSpokeEnd,
+  hexVertices,
+  hexPath,
+  hexbinFill,
+} from './pointIntelligence2dMath';
+export type { GlyphShape } from './pointIntelligence2dMath';
 export { MlpNeuronHyperplanes2D } from './MlpNeuronHyperplanes2D';
 export { PipelineSpaceToggle2D } from './PipelineSpaceToggle2D';
 export { OnnxLatentManifold2D } from './OnnxLatentManifold2D';

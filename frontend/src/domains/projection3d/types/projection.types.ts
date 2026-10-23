@@ -440,6 +440,31 @@ export interface Contour2DPayload {
   computationTimeMs: number;
 }
 
+/** Phase 49 — one hexbin aggregation cell (mirrors HexbinCell2D). */
+export interface HexbinCell2D {
+  centerX: number;
+  centerY: number;
+  radius: number;
+  count: number;
+  dominantClass: number | null;
+  meanResidual: number;
+  errorRate: number;
+}
+
+/** Phase 49 — density-contour level (mirrors DensityContourLevel2D). */
+export interface PointDensityContour2D {
+  densityThreshold: number;
+  segments: Array<[number, number, number, number]>;
+}
+
+/** Phase 49 — point-intelligence aggregation payload (mechanism D). */
+export interface PointIntelligencePayload {
+  hexbinCells: HexbinCell2D[];
+  densityContours: PointDensityContour2D[];
+  maxBinCount: number;
+  computationTimeMs: number;
+}
+
 export interface SurfaceMeshPayload {
   gridResolution: number;
   xFeature: string;

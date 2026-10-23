@@ -69,6 +69,12 @@ interface Stage3DState {
   showLeafPolygons: boolean;
   showQuantizedBins: boolean;
   showObliviousGrid: boolean;
+  /** Phase 49 — point-intelligence overlay visibility (T/R/E/H + spokes). */
+  showCometTrails: boolean;
+  showDualRings: boolean;
+  showErrorsOnly: boolean;
+  showHexbins: boolean;
+  showResidualSpokes: boolean;
   /** Phase 47 — neural / pipeline / ONNX overlay visibility + space toggle. */
   showNeuronCuts: boolean;
   showDeadReLUs: boolean;
@@ -107,6 +113,11 @@ interface Stage3DState {
   setShowLeafPolygons: (v: boolean) => void;
   setShowQuantizedBins: (v: boolean) => void;
   setShowObliviousGrid: (v: boolean) => void;
+  setShowCometTrails: (v: boolean) => void;
+  setShowDualRings: (v: boolean) => void;
+  setShowErrorsOnly: (v: boolean) => void;
+  setShowHexbins: (v: boolean) => void;
+  setShowResidualSpokes: (v: boolean) => void;
   setShowNeuronCuts: (v: boolean) => void;
   setShowDeadReLUs: (v: boolean) => void;
   setShowLatentManifold: (v: boolean) => void;
@@ -193,6 +204,11 @@ export const useStage3DStore = create<Stage3DState>((set, get) => ({
   showLeafPolygons: true,
   showQuantizedBins: true,
   showObliviousGrid: true,
+  showCometTrails: true,
+  showDualRings: true,
+  showErrorsOnly: false,
+  showHexbins: false,
+  showResidualSpokes: true,
   showNeuronCuts: true,
   showDeadReLUs: true,
   showLatentManifold: true,
@@ -256,6 +272,16 @@ export const useStage3DStore = create<Stage3DState>((set, get) => ({
   setShowQuantizedBins: (v) => set({ showQuantizedBins: v }),
 
   setShowObliviousGrid: (v) => set({ showObliviousGrid: v }),
+
+  setShowCometTrails: (v) => set({ showCometTrails: v }),
+
+  setShowDualRings: (v) => set({ showDualRings: v }),
+
+  setShowErrorsOnly: (v) => set({ showErrorsOnly: v }),
+
+  setShowHexbins: (v) => set({ showHexbins: v }),
+
+  setShowResidualSpokes: (v) => set({ showResidualSpokes: v }),
 
   setShowNeuronCuts: (v) => set({ showNeuronCuts: v }),
 
