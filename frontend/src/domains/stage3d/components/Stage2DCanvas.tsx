@@ -4,6 +4,9 @@ import { useProjectionStore } from '../../projection3d/store/useProjectionStore'
 import { usePlaybackStore } from '../../playback/store/usePlaybackStore';
 import { sampleColormap } from '../../projection3d/components/colormaps';
 import { DecisionBoundaryContour2D, wy } from './DecisionBoundaryContour2D';
+import { HexbinOverlay2D, type HexbinMode } from './surfaces_2d/HexbinOverlay2D';
+import { PointDisplayToolbar2D } from './surfaces_2d/PointDisplayToolbar2D';
+import { PointIntelligenceLayer2D } from './surfaces_2d/PointIntelligenceLayer2D';
 import { LinearOverlays2D } from './surfaces_2d/LinearOverlays2D';
 import { DistanceOverlays2D } from './surfaces_2d/DistanceOverlays2D';
 import { ProbabilisticOverlays2D } from './surfaces_2d/ProbabilisticOverlays2D';
@@ -46,7 +49,10 @@ export function Stage2DCanvas() {
   const adaBoostStage = useStage3DStore((s) => s.adaBoostStage);
   const showHeatmap = useStage3DStore((s) => s.showHeatmap);
   const showRulers = useStage3DStore((s) => s.showRulers);
+  const showHexbins = useStage3DStore((s) => s.showHexbins);
+  const pointIntel = useProjectionStore((s) => s.pointIntel);
   const pipelineSpace = useStage3DStore((s) => s.pipelineSpace);
+  const [hexbinMode, setHexbinMode] = useState<HexbinMode>('count');
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const squareRef = useRef<HTMLDivElement>(null);
@@ -257,32 +263,53 @@ export function Stage2DCanvas() {
               <BoostingOverlays2D contourData={contourData} boostFrame={boostFrame} />
               {/* Phase 47 — MLP neuron cuts, pipeline space toggle, ONNX latent plane. */}
               <NeuralOverlays2D contourData={contourData} />
-              {/* Trajectory points */}
-              <g aria-label="Trajectory points">
-                {points.map((p, f) => {
-                  const mispredicted =
-                    isClassification && p.residual_error !== null && Math.abs(p.residual_error) > 0.5;
-                  const r = f === activeFrameIndex ? 0.14 : 0.1;
-                  return (
-                    <g key={`${p.original_row_index}-${f}`}>
-                      <circle
-                        cx={p.world_x}
-                        cy={wy(p.world_y)}
-                        r={r}
-                        fill={pointFill(p.raw_z_pred, hMin, hMax, colormap)}
-                        stroke={mispredicted ? '#ef4444' : '#0b0f14'}
-                        strokeWidth={mispredicted ? 0.05 : 0.03}
-                        opacity={f === activeFrameIndex ? 1 : 0.88}
-                      />
-                      {mispredicted && (
-                        <text x={p.world_x} y={wy(p.world_y)} fontSize={0.22} fill="#ef4444" textAnchor="middle" dy="0.08">
-                          ×
-                        </text>
-                      )}
-                    </g>
-                  );
-                })}
-              </g>
+              {/* Phase 49 — hexbin density under the points (mechanism D). */}
+              {showHexbins && pointIntel && (
+                <HexbinOverlay2D
+                  cells={pointIntel.hexbinCells}
+                  maxBinCount={pointIntel.maxBinCount}
+                  mode={hexbinMode}
+                  classColor={(cls) => {
+                    if (cls === null || !contourData) return '#94a3b8';
+                    const idx = contourData.classes.findIndex((c) => c === cls || String(c) === String(cls));
+                    const n = contourData.classes.length;
+                    const t = n < 2 ? 0.5 : Math.max(0, idx) / (n - 1);
+                    const [r, g, b] = sampleColormap(colormap, t);
+                    return `rgb(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)})`;
+                  }}
+                  visible
+                />
+              )}
+              {/* Phase 49 — empirical density contours (KDE-lite isolines). */}
+              {showHexbins && pointIntel && pointIntel.densityContours.length > 0 && (
+                <g aria-label="Density contours" className="pointer-events-none">
+                  {pointIntel.densityContours.map((level, li) => (
+                    <path
+                      key={`density-${level.densityThreshold}-${li}`}
+                      d={level.segments
+                        .map(([x1, y1, x2, y2]) => `M${x1.toFixed(3)} ${wy(y1).toFixed(3)}L${x2.toFixed(3)} ${wy(y2).toFixed(3)}`)
+                        .join('')}
+                      fill="none"
+                      stroke="#818cf8"
+                      strokeWidth={0.03}
+                      strokeDasharray="0.3 0.14"
+                      opacity={0.75}
+                    >
+                      <title>{`Empirical density ≥ ${level.densityThreshold}`}</title>
+                    </path>
+                  ))}
+                </g>
+              )}
+              {/* Phase 49 — comet trails + dual-ring glyphs + error lens (A/B/C). */}
+              <PointIntelligenceLayer2D
+                points={points}
+                activeFrameIndex={activeFrameIndex}
+                isClassification={isClassification}
+                classes={contourData?.classes ?? []}
+                colormap={colormap}
+                heatmapMin={hMin}
+                heatmapMax={hMax}
+              />
               <WhatIfDisplacementVector2D />
               <ActiveDataPointReticle2D points={points} activeFrameIndex={activeFrameIndex} />
               {/* Precision rulers (raw values, inside the frame to avoid clipping) */}
@@ -325,7 +352,19 @@ export function Stage2DCanvas() {
               </div>
             )}
           </div>
-          {/* 2D status badge */}
+            {/* Phase 49 — point display quick toggles [T][R][E][H]. */}
+            <PointDisplayToolbar2D hexbinMode={hexbinMode} onHexbinMode={setHexbinMode} />
+            {/* Phase 49 — hexbin bake badge (cells · max · ms). */}
+            {showHexbins && pointIntel && (
+              <div
+                className="font-mono-tabular pointer-events-none absolute bottom-1 left-1/2 -translate-x-1/2 rounded px-2 py-1 text-[11px]"
+                style={{ background: 'rgba(10,15,22,0.72)', color: 'var(--text-secondary)' }}
+                title={`${pointIntel.hexbinCells.length} hexbin cells in world coords`}
+              >
+                ⬡ {pointIntel.hexbinCells.length} bins · max {pointIntel.maxBinCount} · {pointIntel.computationTimeMs.toFixed(1)} ms
+              </div>
+            )}
+            {/* 2D status badge */}
           <div
             className="font-mono-tabular pointer-events-none absolute bottom-1 left-1 rounded px-2 py-1 text-[11px]"
             style={{ background: 'rgba(10,15,22,0.72)', color: 'var(--text-secondary)' }}

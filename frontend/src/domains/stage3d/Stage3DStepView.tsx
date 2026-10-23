@@ -174,6 +174,25 @@ export function Stage3DStepView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, datasetId, modelId, mappingId, viewMode, surfaceVisualType, projX, projY, activeFrameIndex, points.length, featureNames.join('|')]);
 
+  // Phase 49 — hexbin + density aggregation for the point-intelligence
+  // layer, fetched when the Hexbin toggle is on (queue-bound, cached).
+  const showHexbins = useStage3DStore((s) => s.showHexbins);
+  useEffect(() => {
+    if (!ready || !datasetId || !modelId || !mappingId || viewMode !== '2d') return;
+    if (!showHexbins) return;
+    if (featureNames.length > 0 && (!featureNames.includes(projX) || !featureNames.includes(projY))) return;
+    const timer = window.setTimeout(() => {
+      void useProjectionStore.getState().fetchPointIntel({
+        datasetId,
+        modelId,
+        mappingId,
+        queueRowIndices: queueIndices,
+      });
+    }, 150);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, datasetId, modelId, mappingId, queueKey, viewMode, showHexbins, projX, projY, featureNames.join('|')]);
+
   // Phase 46 — live boosting SHAP: refetch the per-frame push vector as the
   // VCR scrubs, gated on the contour's boosting family (native TreeSHAP only).
   const boostFamily = useProjectionStore((s) => s.contourData?.boosting2d?.family ?? null);

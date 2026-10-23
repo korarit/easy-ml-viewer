@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { fetchBoostFrame2D, fetchContour2D, fetchKnnFrame2D, fetchSurfaceMesh } from '../api/projectionApi';
+import { fetchBoostFrame2D, fetchContour2D, fetchKnnFrame2D, fetchPointIntelligence2D, fetchSurfaceMesh } from '../api/projectionApi';
 import type {
   AvailableFeature,
   BoostFrame2DPayload,
@@ -8,6 +8,7 @@ import type {
   KnnFrame2DPayload,
   LodLevel,
   PinningMode,
+  PointIntelligencePayload,
   ProjectionMode,
   SurfaceMeshPayload,
   ZMode,
@@ -41,6 +42,9 @@ interface ProjectionState {
   /** Phase 46 — live per-frame boosting SHAP vector (same scrub contract). */
   boostFrame: BoostFrame2DPayload | null;
   boostFrameLoading: boolean;
+  /** Phase 49 — hexbin + density aggregation for the point-intelligence layer. */
+  pointIntel: PointIntelligencePayload | null;
+  pointIntelLoading: boolean;
   ensureDefaults: (features: AvailableFeature[]) => void;
   setXFeature: (name: string) => void;
   setYFeature: (name: string) => void;
@@ -86,6 +90,12 @@ interface ProjectionState {
     yFeature: string;
     rowIndex: number;
   }) => Promise<void>;
+  fetchPointIntel: (params: {
+    datasetId: string;
+    modelId: string;
+    mappingId: string;
+    queueRowIndices: number[];
+  }) => Promise<void>;
   clearError: () => void;
 }
 
@@ -93,8 +103,11 @@ let inFlightAbort: AbortController | null = null;
 let contourAbort: AbortController | null = null;
 let knnFrameAbort: AbortController | null = null;
 let boostFrameAbort: AbortController | null = null;
+let pointIntelAbort: AbortController | null = null;
 /** Phase 41 — frontend contour cache so 2D↔3D toggles never refetch. */
 const contourCache = new Map<string, Contour2DPayload>();
+/** Phase 49 — point-intelligence cache keyed on scene + queue (hexbins are queue-bound). */
+const pointIntelCache = new Map<string, PointIntelligencePayload>();
 
 function contourKey(
   datasetId: string,
@@ -153,6 +166,8 @@ export const useProjectionStore = create<ProjectionState>((set, get) => ({
   knnFrameLoading: false,
   boostFrame: null,
   boostFrameLoading: false,
+  pointIntel: null,
+  pointIntelLoading: false,
 
   ensureDefaults: (features) => {
     if (features.length === 0) return;
@@ -330,6 +345,51 @@ export const useProjectionStore = create<ProjectionState>((set, get) => ({
   },
 
   clearError: () => set({ projError: null, contourError: null }),
+
+  fetchPointIntel: async ({ datasetId, modelId, mappingId, queueRowIndices }) => {
+    const s = get();
+    if (!datasetId || !modelId || !mappingId) return;
+    if (s.mode !== 'axis_explorer' || !s.xFeature || !s.yFeature) return;
+    const key = [datasetId, modelId, mappingId, s.xFeature, s.yFeature, ...queueRowIndices].join('|');
+    const cached = pointIntelCache.get(key);
+    if (cached) {
+      if (get().pointIntel !== cached) set({ pointIntel: cached });
+      return;
+    }
+    if (pointIntelAbort) pointIntelAbort.abort();
+    const controller = new AbortController();
+    pointIntelAbort = controller;
+    set({ pointIntelLoading: true });
+    try {
+      const data = await fetchPointIntelligence2D(
+        {
+          datasetId,
+          modelId,
+          mappingId,
+          xFeature: s.xFeature,
+          yFeature: s.yFeature,
+          selectedRowIndices: queueRowIndices,
+        },
+        controller.signal,
+      );
+      if (controller.signal.aborted) return;
+      pointIntelCache.set(key, data);
+      // Cap the cache: hexbin payloads are queue-bound and can vary widely.
+      if (pointIntelCache.size > 8) {
+        const oldest = pointIntelCache.keys().next().value;
+        if (oldest !== undefined) pointIntelCache.delete(oldest);
+      }
+      set({ pointIntel: data });
+    } catch {
+      if (controller.signal.aborted) return;
+      // Hexbins are progressive enhancement — a failure clears the overlay
+      // instead of erroring; points + contour remain the fallback.
+      set({ pointIntel: null });
+    } finally {
+      if (pointIntelAbort === controller) pointIntelAbort = null;
+      set({ pointIntelLoading: false });
+    }
+  },
 
   fetchKnnFrame: async ({ datasetId, modelId, mappingId, xFeature, yFeature, rowIndex }) => {
     if (!datasetId || !modelId || !mappingId || !xFeature || !yFeature || rowIndex < 0) return;
