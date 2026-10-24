@@ -23,15 +23,23 @@ class MlvFormatError(ValueError):
     """Raised when a `.mlv` file is malformed or corrupted."""
 
 
+#: Phase 56 — dtypes the codec preserves verbatim (v1 float32 path untouched).
+_PRESERVED_DTYPES = ("int8", "uint8", "int16", "uint16", "int32", "float16", "float32")
+
+
 def _msgpack_default_encoder(obj: Any) -> Any:
     """Map NumPy scalars / arrays to MessagePack-compatible types."""
     if isinstance(obj, np.ndarray):
-        arr_f32 = np.ascontiguousarray(obj, dtype=np.float32)
+        # Phase 56: preserve compact quantized dtypes (int16/uint8/...) so
+        # point-intelligence tracks stay under the 150 KB spec budget.
+        # All other dtypes keep the legacy float32 path (backward compatible).
+        dtype_name = str(obj.dtype.name) if obj.dtype.name in _PRESERVED_DTYPES else "float32"
+        arr = np.ascontiguousarray(obj, dtype=np.dtype(dtype_name))
         return {
             "__nd__": True,
-            "dtype": "float32",
-            "shape": list(arr_f32.shape),
-            "bytes": arr_f32.tobytes(),
+            "dtype": dtype_name,
+            "shape": list(arr.shape),
+            "bytes": arr.tobytes(),
         }
     if isinstance(obj, (np.floating, np.float32, np.float64)):
         return float(obj)
@@ -43,11 +51,14 @@ def _msgpack_default_encoder(obj: Any) -> Any:
 
 
 def _msgpack_object_hook(obj: dict[Any, Any]) -> Any:
-    """Restore binary buffers back to read-write NumPy float32 arrays."""
+    """Restore binary buffers back to read-write NumPy arrays."""
     if obj.get("__nd__") is True:
         raw_bytes: bytes = obj["bytes"]
         shape: tuple[int, ...] = tuple(obj["shape"])
-        return np.frombuffer(raw_bytes, dtype=np.float32).reshape(shape).copy()
+        dtype_name = str(obj.get("dtype", "float32"))
+        if dtype_name not in _PRESERVED_DTYPES:
+            dtype_name = "float32"  # legacy / unknown → honest float32 fallback
+        return np.frombuffer(raw_bytes, dtype=np.dtype(dtype_name)).reshape(shape).copy()
     return obj
 
 
