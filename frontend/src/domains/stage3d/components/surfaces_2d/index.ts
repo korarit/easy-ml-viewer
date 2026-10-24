@@ -208,6 +208,37 @@ export { PipelineSpaceToggle2D } from './PipelineSpaceToggle2D';
 export { OnnxLatentManifold2D } from './OnnxLatentManifold2D';
 export { NeuralOverlays2D } from './NeuralOverlays2D';
 export { batchHyperplanePaths, fitLatentToWorld, scaledRulerLabel } from './neural2dMath';
+export { DualSpaceCometTrail2D } from './DualSpaceCometTrail2D';
+export { SoftmaxLogitGapRing2D } from './SoftmaxLogitGapRing2D';
+export type { LogitGapRingDatum } from './SoftmaxLogitGapRing2D';
+export { LossGradientSpoke2D } from './LossGradientSpoke2D';
+export type { LossGradientSpoke } from './LossGradientSpoke2D';
+export { DataDesertHexbin2D } from './DataDesertHexbin2D';
+export { NeuralPointIntelOverlays2D } from './NeuralPointIntelOverlays2D';
+export {
+  LOGIT_CONFIDENT_COLOR,
+  LOGIT_DIFFUSE_COLOR,
+  LOGIT_DECIDIVE_COLOR,
+  DUAL_SPACE_TRAIL_COLOR,
+  LATENT_TRAIL_COLOR,
+  LOSS_GRAD_COLOR,
+  DESERT_HAZARD_COLOR,
+  LOGIT_CONFIDENT_GAP,
+  LOGIT_DIFFUSE_GAP,
+  DESERT_HAZARD_THRESHOLD,
+  GRAD_SPOKE_MAX_WORLD,
+  dualSpaceValue,
+  dualSpaceWorld,
+  logitGap,
+  logitGapStatus,
+  binaryLogit,
+  gradSpokeLengths,
+  gradUnit,
+  desertHazard,
+  haloTone,
+  gradSpokeToSvg,
+} from './neuralPointIntel2dMath';
+export type { LogitGapStatus } from './neuralPointIntel2dMath';
 export { ellipseColor, sigmaCoverage, SIGMA_LEVELS } from './probabilistic2dMath';
 export { clipLineToRectRaw, deriveExactElevationLines, rawToWorld1D } from './linear2dMath';
 export type { WorldSeg } from './linear2dMath';
