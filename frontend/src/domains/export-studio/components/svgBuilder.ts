@@ -11,6 +11,23 @@ export interface SvgPoint {
   actual: number;
 }
 
+export interface SvgHexCell {
+  cx: number;
+  cy: number;
+  r: number;
+  count: number;
+  errorRate: number;
+  domClass: number | null;
+}
+
+export interface SvgDualRing {
+  x: number;
+  y: number;
+  actualColor: string;
+  predColor: string;
+  isError: boolean;
+}
+
 function esc(s: string): string {
   return s
     .replace(/&/g, '&amp;')
@@ -25,6 +42,34 @@ function finite(v: unknown, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function hexPolygonPoints(cx: number, cy: number, r: number): string {
+  const pts: string[] = [];
+  for (let k = 0; k < 6; k += 1) {
+    const a = (Math.PI / 180) * (60 * k - 30);
+    pts.push(`${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`);
+  }
+  return pts.join(' ');
+}
+
+function hexFillFor(mode: 'count' | 'error' | 'class', cell: SvgHexCell, maxCount: number): string {
+  if (mode === 'error') {
+    const t = Math.min(1, Math.max(0, cell.errorRate));
+    const r = Math.round(244 * t + 148 * (1 - t));
+    const g = Math.round(63 * t + 163 * (1 - t));
+    const b = Math.round(94 * t + 184 * (1 - t));
+    return `rgb(${r},${g},${b})`;
+  }
+  if (mode === 'class') {
+    const palette = ['#38bdf8', '#f472b6', '#a3e635', '#fbbf24', '#c084fc', '#2dd4bf'];
+    const idx = cell.domClass === null ? -1 : Math.abs(cell.domClass) % palette.length;
+    return idx < 0 ? '#64748b' : palette[idx]!;
+  }
+  const t = maxCount > 0 ? Math.min(1, cell.count / maxCount) : 0;
+  const alpha = 0.25 + 0.55 * Math.sqrt(t);
+  const shade = Math.round(148 + 107 * t);
+  return `rgba(56,189,248,${alpha.toFixed(2)})`;
+}
+
 export function buildDecisionSvg(options: {
   xLabel: string;
   yLabel: string;
@@ -36,6 +81,12 @@ export function buildDecisionSvg(options: {
   title?: string;
   disagreementPct?: number | null;
   maxPoints?: number;
+  /** Phase 56 — true-vector Point Intelligence layers (all optional). */
+  hexbinCells?: SvgHexCell[];
+  hexbinMode?: 'count' | 'error' | 'class';
+  dualRings?: SvgDualRing[];
+  trailPolyline?: Array<[number, number]>;
+  densitySegments?: number[][];
 }): string {
   const {
     xLabel,
@@ -48,6 +99,11 @@ export function buildDecisionSvg(options: {
     title = '2D Decision Boundary',
     disagreementPct = null,
     maxPoints = 20000,
+    hexbinCells = [],
+    hexbinMode = 'count',
+    dualRings = [],
+    trailPolyline = [],
+    densitySegments = [],
   } = options;
   const w = Math.max(320, Math.min(3840, Math.floor(width)));
   const h = Math.max(240, Math.min(2160, Math.floor(height)));
@@ -133,12 +189,59 @@ export function buildDecisionSvg(options: {
     out.push(`<line x1="${r2(sx(x1))}" y1="${r2(sy(y1))}" x2="${r2(sx(x2))}" y2="${r2(sy(y2))}" />`);
   }
   out.push('</g>');
+  // Phase 56 — empirical density isolines (KDE-lite contours) as dashed vectors.
+  const dSegs: Array<[number, number, number, number]> = [];
+  for (const s of densitySegments.slice(0, 5000)) {
+    if (!Array.isArray(s) || s.length < 4) continue;
+    const vals = [finite(s[0], NaN), finite(s[1], NaN), finite(s[2], NaN), finite(s[3], NaN)];
+    if (vals.some((v) => !Number.isFinite(v))) continue;
+    dSegs.push(vals as [number, number, number, number]);
+  }
+  if (dSegs.length > 0) {
+    out.push('<g id="density-contours" stroke="#818cf8" stroke-width="1.2" fill="none" stroke-dasharray="6 3" opacity="0.75">');
+    for (const [x1, y1, x2, y2] of dSegs) {
+      out.push(`<line x1="${r2(sx(x1))}" y1="${r2(sy(y1))}" x2="${r2(sx(x2))}" y2="${r2(sy(y2))}" />`);
+    }
+    out.push('</g>');
+  }
+  // Phase 56 — hexbin tessellation grid as true <polygon> vectors.
+  const hexes = hexbinCells.slice(0, 2000).filter((c) => Number.isFinite(c.cx) && Number.isFinite(c.cy) && c.r > 0 && c.count > 0);
+  if (hexes.length > 0) {
+    const maxCount = Math.max(...hexes.map((c) => c.count));
+    const xScale = plotW / (xMax - xMin);
+    out.push('<g id="hexbin-grid" stroke="#0f172a" stroke-width="0.6" opacity="0.9">');
+    for (const c of hexes) {
+      const rPx = Math.max(1, c.r * xScale);
+      out.push(
+        `<polygon points="${hexPolygonPoints(sx(c.cx), sy(c.cy), rPx)}" fill="${hexFillFor(hexbinMode, c, maxCount)}" fill-opacity="0.42"><title>n=${c.count} err=${(c.errorRate * 100).toFixed(0)}% cls=${c.domClass ?? '–'}</title></polygon>`,
+      );
+    }
+    out.push('</g>');
+  }
+  // Phase 56 — comet trail trajectory as a single vector polyline.
+  const trail = trailPolyline.filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y)).slice(-500);
+  if (trail.length >= 2) {
+    const d = trail.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${r2(sx(x))} ${r2(sy(y))}`).join('');
+    out.push(`<g id="comet-trail" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" opacity="0.9"><path d="${d}"/></g>`);
+  }
   out.push('<g id="trajectory-points">');
   for (const [x, y, actual] of pts) {
     const color = actual ? '#f43f5e' : '#10b981';
     out.push(`<circle cx="${r2(sx(x))}" cy="${r2(sy(y))}" r="4" fill="${color}" opacity="0.85"/>`);
   }
   out.push('</g>');
+  // Phase 56 — dual-ring actual/prediction glyphs as concentric vector circles.
+  const rings = dualRings.filter((d) => Number.isFinite(d.x) && Number.isFinite(d.y)).slice(0, 2000);
+  if (rings.length > 0) {
+    out.push('<g id="dual-rings" fill="none">');
+    for (const d of rings) {
+      const cx = r2(sx(d.x));
+      const cy = r2(sy(d.y));
+      out.push(`<circle cx="${cx}" cy="${cy}" r="7" stroke="${esc(d.predColor || '#e2e8f0')}" stroke-width="2.5"/>`);
+      out.push(`<circle cx="${cx}" cy="${cy}" r="3.5" fill="${esc(d.actualColor || '#38bdf8')}"${d.isError ? ' stroke="#ef4444" stroke-width="1.5"' : ''}/>`);
+    }
+    out.push('</g>');
+  }
   out.push(
     `<text x="${(w / 2).toFixed(0)}" y="${h - 20}" fill="${muted}" font-family="Inter, sans-serif" font-size="14" text-anchor="middle">${esc(xLabel)}</text>`,
   );
