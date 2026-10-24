@@ -213,5 +213,8 @@ def hidden_halo_tone(activations: np.ndarray) -> np.ndarray:
     if a.ndim != 2:
         raise ValueError(f"Expected 2D activations, got shape {a.shape}")
     with np.errstate(invalid="ignore"):
-        tone = np.nanmean(np.abs(np.where(np.isfinite(a), a, np.nan)), axis=1)
+        masked = np.abs(np.where(np.isfinite(a), a, np.nan))
+        count = np.sum(~np.isnan(masked), axis=1)
+        total = np.nansum(masked, axis=1)
+    tone = np.where(count > 0, total / np.maximum(count, 1), np.nan)
     return np.ascontiguousarray(tone)
