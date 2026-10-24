@@ -16,6 +16,7 @@ import { useExportStore } from '../store/useExportStore';
 import { useWebGLSnapshot } from '../hooks/useWebGLSnapshot';
 import { useWebGLVideoRecorder } from '../hooks/useWebGLVideoRecorder';
 import { registerRecorderControls } from '../hooks/videoRecorderControl';
+import { AdvancedVideoExportTab } from './AdvancedVideoExportTab';
 
 function findStageCanvas(): HTMLCanvasElement | null {
   return document.querySelector('[data-stage3d-canvas="true"] canvas');
@@ -31,7 +32,7 @@ function hudLine(): string {
 
 const TABS = [
   { id: 'data', label: '1. Enriched Data (.csv/.xlsx)' },
-  { id: 'video', label: '2. 3D Video Clip (.webm)' },
+  { id: 'video', label: '2. Advanced Video Clip (.mp4 / .webm)' },
   { id: 'snapshot', label: '3. 3D Snapshot (.png)' },
 ] as const;
 
@@ -421,63 +422,73 @@ export function ExportStudioModal() {
         )}
 
         {activeTab === 'video' && (
-          <div className="mt-4 space-y-4 text-xs" style={{ color: 'var(--text-secondary)' }}>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium" style={{ color: 'var(--text-primary)' }}>Frame Rate &amp; Quality:</span>
-              {([30, 60] as const).map((v) => (
-                <button
-                  key={v}
-                  onClick={() => setFps(v)}
-                  disabled={isRecording}
-                  className="rounded-md px-3 py-1.5 disabled:opacity-50"
-                  style={{ border: `1px solid ${fps === v ? 'var(--ml-primary)' : 'var(--border-subtle)'}` }}
-                >
-                  {fps === v ? '● ' : '○ '}{v} FPS ({v === 60 ? 'Smooth Studio — 16 Mbps' : 'Standard — 8 Mbps'})
-                </button>
-              ))}
-            </div>
-            <label className="flex cursor-pointer items-center gap-2">
-              <input type="checkbox" checked={hudOverlay} onChange={(e) => setHudOverlay(e.target.checked)} disabled={isRecording} />
-              HUD Watermark Overlay — burn frame number &amp; FPS into the video pixels
-            </label>
-            <label className="flex cursor-pointer items-center gap-2">
-              <input type="checkbox" checked={autoStopAtB} onChange={(e) => setAutoStopAtB(e.target.checked)} />
-              Auto-start &amp; auto-stop at the A-B loop range
-              {loopRange ? ` (A=${loopRange[0]}, B=${loopRange[1]})` : ' (no loop set)'}
-            </label>
-            {videoError && (
-              <div className="rounded px-3 py-2" style={{ background: 'rgba(244,63,94,0.12)', color: '#f43d5e' }} role="alert">
-                {videoError}
+          <div>
+            {/* Phase 57 — Advanced Multi-Layout Video Export Studio (primary). */}
+            <AdvancedVideoExportTab />
+            {/* Phase 16 legacy live-capture recorder (kept for Ctrl+Shift+R + REC bar). */}
+            <details className="mt-4 text-xs" style={{ color: 'var(--text-secondary)' }}>
+              <summary className="cursor-pointer font-medium" style={{ color: 'var(--text-primary)' }}>
+                Legacy live-capture recorder (screen-canvas MediaRecorder)
+              </summary>
+              <div className="mt-3 space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>Frame Rate &amp; Quality:</span>
+                  {([30, 60] as const).map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => setFps(v)}
+                      disabled={isRecording}
+                      className="rounded-md px-3 py-1.5 disabled:opacity-50"
+                      style={{ border: `1px solid ${fps === v ? 'var(--ml-primary)' : 'var(--border-subtle)'}` }}
+                    >
+                      {fps === v ? '● ' : '○ '}{v} FPS ({v === 60 ? 'Smooth Studio — 16 Mbps' : 'Standard — 8 Mbps'})
+                    </button>
+                  ))}
+                </div>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input type="checkbox" checked={hudOverlay} onChange={(e) => setHudOverlay(e.target.checked)} disabled={isRecording} />
+                  HUD Watermark Overlay — burn frame number &amp; FPS into the video pixels
+                </label>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input type="checkbox" checked={autoStopAtB} onChange={(e) => setAutoStopAtB(e.target.checked)} />
+                  Auto-start &amp; auto-stop at the A-B loop range
+                  {loopRange ? ` (A=${loopRange[0]}, B=${loopRange[1]})` : ' (no loop set)'}
+                </label>
+                {videoError && (
+                  <div className="rounded px-3 py-2" style={{ background: 'rgba(244,63,94,0.12)', color: '#f43d5e' }} role="alert">
+                    {videoError}
+                  </div>
+                )}
+                <div className="flex justify-end gap-2">
+                  {!isRecording ? (
+                    <>
+                      <button
+                        onClick={onRecordAB}
+                        className="rounded-md px-4 py-2 font-medium"
+                        style={{ background: 'var(--ml-primary)', color: '#fff' }}
+                      >
+                        🎬 Record A-B Sequence
+                      </button>
+                      <button
+                        onClick={quickRecord}
+                        className="rounded-md px-4 py-2"
+                        style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                      >
+                        ● Manual Start Recording
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={stopRecording}
+                      className="rounded-md px-4 py-2 font-medium"
+                      style={{ background: '#dc2626', color: '#fff' }}
+                    >
+                      ⏹ Stop &amp; Save Video
+                    </button>
+                  )}
+                </div>
               </div>
-            )}
-            <div className="flex justify-end gap-2">
-              {!isRecording ? (
-                <>
-                  <button
-                    onClick={onRecordAB}
-                    className="rounded-md px-4 py-2 font-medium"
-                    style={{ background: 'var(--ml-primary)', color: '#fff' }}
-                  >
-                    🎬 Record A-B Sequence
-                  </button>
-                  <button
-                    onClick={quickRecord}
-                    className="rounded-md px-4 py-2"
-                    style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
-                  >
-                    ● Manual Start Recording
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={stopRecording}
-                  className="rounded-md px-4 py-2 font-medium"
-                  style={{ background: '#dc2626', color: '#fff' }}
-                >
-                  ⏹ Stop &amp; Save Video
-                </button>
-              )}
-            </div>
+            </details>
           </div>
         )}
 
