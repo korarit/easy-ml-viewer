@@ -11,6 +11,7 @@ import { LinearPointIntelOverlays2D } from './surfaces_2d/LinearPointIntelOverla
 import { DistancePointIntelOverlays2D } from './surfaces_2d/DistancePointIntelOverlays2D';
 import { ProbabilisticPointIntelOverlays2D } from './surfaces_2d/ProbabilisticPointIntelOverlays2D';
 import { TreesPointIntelOverlays2D } from './surfaces_2d/TreesPointIntelOverlays2D';
+import { BoostingPointIntelOverlays2D } from './surfaces_2d/BoostingPointIntelOverlays2D';
 import { LinearOverlays2D } from './surfaces_2d/LinearOverlays2D';
 import { DistanceOverlays2D } from './surfaces_2d/DistanceOverlays2D';
 import { ProbabilisticOverlays2D } from './surfaces_2d/ProbabilisticOverlays2D';
@@ -375,6 +376,28 @@ export function Stage2DCanvas() {
                     activeFrameIndex={activeFrameIndex}
                     hexbinCells={pointIntel?.hexbinCells ?? []}
                     isClassification={isClassification}
+                    classColor={classColorFor}
+                  />
+                )}
+              {/* Phase 54 — SHAP push trails, margin rings, gradient spokes, lattice hexbins. */}
+              {contourData.boosting2d &&
+                (contourData.boosting2d.family === 'sklearn_gbm' ||
+                  contourData.boosting2d.family === 'hist_gbm' ||
+                  contourData.boosting2d.family === 'xgboost' ||
+                  contourData.boosting2d.family === 'lightgbm' ||
+                  contourData.boosting2d.family === 'catboost') && (
+                  <BoostingPointIntelOverlays2D
+                    boosting2d={contourData.boosting2d}
+                    boostFrame={boostFrame}
+                    points={points}
+                    activeFrameIndex={activeFrameIndex}
+                    hexbinCells={pointIntel?.hexbinCells ?? []}
+                    isClassification={isClassification}
+                    positiveLabel={
+                      isClassification && contourData.classes.length === 2
+                        ? (contourData.classes[1] ?? null)
+                        : null
+                    }
                     classColor={classColorFor}
                   />
                 )}
