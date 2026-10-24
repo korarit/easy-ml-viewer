@@ -8,7 +8,6 @@ import { SoftmaxLogitGapRing2D, type LogitGapRingDatum } from './SoftmaxLogitGap
 import { LossGradientSpoke2D, type LossGradientSpoke } from './LossGradientSpoke2D';
 import { DataDesertHexbin2D } from './DataDesertHexbin2D';
 import {
-  binaryLogit,
   desertHazard,
   dualSpaceWorld,
   gradSpokeLengths,
@@ -129,10 +128,9 @@ export function NeuralPointIntelOverlays2D({
     });
   }
 
-  // Binary single-proba fallback: |logit| from the predicted confidence.
-  // (Points carry labels, not probas, so this stays dormant without a
-  // proba endpoint — the full-logit path above is the live one.)
-  void binaryLogit;
+  // Note: queued points carry predicted labels, not probas, so there is
+  // no honest binary |logit| fallback — the full-logit path above is live
+  // once the backend ships per-point pre-softmax outputs.
 
   // Mechanism C: input loss-gradient spokes.
   const spokes: LossGradientSpoke[] = [];

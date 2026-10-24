@@ -12,6 +12,7 @@ import { DistancePointIntelOverlays2D } from './surfaces_2d/DistancePointIntelOv
 import { ProbabilisticPointIntelOverlays2D } from './surfaces_2d/ProbabilisticPointIntelOverlays2D';
 import { TreesPointIntelOverlays2D } from './surfaces_2d/TreesPointIntelOverlays2D';
 import { BoostingPointIntelOverlays2D } from './surfaces_2d/BoostingPointIntelOverlays2D';
+import { NeuralPointIntelOverlays2D } from './surfaces_2d/NeuralPointIntelOverlays2D';
 import { LinearOverlays2D } from './surfaces_2d/LinearOverlays2D';
 import { DistanceOverlays2D } from './surfaces_2d/DistanceOverlays2D';
 import { ProbabilisticOverlays2D } from './surfaces_2d/ProbabilisticOverlays2D';
@@ -399,6 +400,24 @@ export function Stage2DCanvas() {
                         : null
                     }
                     classColor={classColorFor}
+                  />
+                )}
+              {/* Phase 55 — dual-space trails, logit-gap rings, gradient spokes, desert detectors. */}
+              {contourData.neural2d &&
+                (contourData.neural2d.family === 'mlp' ||
+                  contourData.neural2d.family === 'pipeline' ||
+                  contourData.neural2d.family === 'onnx_classical' ||
+                  contourData.neural2d.family === 'onnx_deep') && (
+                  <NeuralPointIntelOverlays2D
+                    neural2d={contourData.neural2d}
+                    points={points}
+                    activeFrameIndex={activeFrameIndex}
+                    hexbinCells={pointIntel?.hexbinCells ?? []}
+                    isClassification={isClassification}
+                    classColor={classColorFor}
+                    pipelineSpace={pipelineSpace}
+                    xRangeRaw={contourData.xRangeRaw}
+                    yRangeRaw={contourData.yRangeRaw}
                   />
                 )}
               <WhatIfDisplacementVector2D />
