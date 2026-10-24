@@ -75,6 +75,9 @@ interface Stage3DState {
   showErrorsOnly: boolean;
   showHexbins: boolean;
   showResidualSpokes: boolean;
+  /** Phase 56 — unified controls: trail length + hexbin metric (Shift+T / Shift+H). */
+  trailLength: 5 | 10 | 20 | 'all';
+  hexbinMetric: 'count' | 'error' | 'class';
   /** Phase 47 — neural / pipeline / ONNX overlay visibility + space toggle. */
   showNeuronCuts: boolean;
   showDeadReLUs: boolean;
@@ -118,6 +121,10 @@ interface Stage3DState {
   setShowErrorsOnly: (v: boolean) => void;
   setShowHexbins: (v: boolean) => void;
   setShowResidualSpokes: (v: boolean) => void;
+  setTrailLength: (v: 5 | 10 | 20 | 'all') => void;
+  cycleTrailLength: () => void;
+  setHexbinMetric: (v: 'count' | 'error' | 'class') => void;
+  cycleHexbinMetric: () => void;
   setShowNeuronCuts: (v: boolean) => void;
   setShowDeadReLUs: (v: boolean) => void;
   setShowLatentManifold: (v: boolean) => void;
@@ -209,6 +216,8 @@ export const useStage3DStore = create<Stage3DState>((set, get) => ({
   showErrorsOnly: false,
   showHexbins: false,
   showResidualSpokes: true,
+  trailLength: 10,
+  hexbinMetric: 'count',
   showNeuronCuts: true,
   showDeadReLUs: true,
   showLatentManifold: true,
@@ -282,6 +291,20 @@ export const useStage3DStore = create<Stage3DState>((set, get) => ({
   setShowHexbins: (v) => set({ showHexbins: v }),
 
   setShowResidualSpokes: (v) => set({ showResidualSpokes: v }),
+
+  setTrailLength: (v) => set({ trailLength: v }),
+
+  cycleTrailLength: () =>
+    set((s) => ({
+      trailLength: s.trailLength === 5 ? 10 : s.trailLength === 10 ? 20 : s.trailLength === 20 ? 'all' : 5,
+    })),
+
+  setHexbinMetric: (v) => set({ hexbinMetric: v }),
+
+  cycleHexbinMetric: () =>
+    set((s) => ({
+      hexbinMetric: s.hexbinMetric === 'count' ? 'error' : s.hexbinMetric === 'error' ? 'class' : 'count',
+    })),
 
   setShowNeuronCuts: (v) => set({ showNeuronCuts: v }),
 

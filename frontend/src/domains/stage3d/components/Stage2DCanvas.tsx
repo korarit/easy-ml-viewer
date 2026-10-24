@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { registerStage2DCapture } from '../../export-studio/hooks/stage3dCaptureRegistry';
 import { useStage3DStore } from '../store/useStage3DStore';
 import { useProjectionStore } from '../../projection3d/store/useProjectionStore';
 import { usePlaybackStore } from '../../playback/store/usePlaybackStore';
@@ -58,13 +59,27 @@ export function Stage2DCanvas() {
   const showHexbins = useStage3DStore((s) => s.showHexbins);
   const pointIntel = useProjectionStore((s) => s.pointIntel);
   const pipelineSpace = useStage3DStore((s) => s.pipelineSpace);
-  const [hexbinMode, setHexbinMode] = useState<HexbinMode>('count');
+  // Phase 56 — unified controls live in the stage3d store (T/R/E/H +
+  // Shift+T trail length, Shift+H hexbin metric); the toolbar owns them.
+  const trailLength = useStage3DStore((s) => s.trailLength);
+  const hexbinMode = useStage3DStore((s) => s.hexbinMetric);
+  const setHexbinMode = useStage3DStore((s) => s.setHexbinMetric);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
   const squareRef = useRef<HTMLDivElement>(null);
   const [hoverFrame, setHoverFrame] = useState<number | null>(null);
   const [hoverXY, setHoverXY] = useState<{ xPct: number; yPct: number } | null>(null);
   const lastHoverAt = useRef(0);
+
+  // Phase 56 — register the live 2D SVG root for vector export + 60 FPS
+  // WebM compositing; unregister on unmount so snapshots never go stale.
+  useEffect(() => {
+    if (svgRef.current) {
+      registerStage2DCapture({ svg: svgRef.current, heatmapCanvas: canvasRef.current, worldHalf: WORLD_HALF });
+    }
+    return () => registerStage2DCapture(null);
+  }, [contourData]);
 
   // Paint the quantized heatmap through the active colormap LUT.
   useEffect(() => {
@@ -254,6 +269,7 @@ export function Stage2DCanvas() {
             style={{ cursor: 'crosshair' }}
           >
             <svg
+              ref={svgRef}
               viewBox={`${-WORLD_HALF} ${-WORLD_HALF} ${WORLD_HALF * 2} ${WORLD_HALF * 2}`}
               className="absolute inset-0 h-full w-full"
               role="img"
@@ -309,7 +325,9 @@ export function Stage2DCanvas() {
                   ))}
                 </g>
               )}
-              {/* Phase 49 — comet trails + dual-ring glyphs + error lens (A/B/C). */}
+              {/* Phase 49 — comet trails + dual-ring glyphs + error lens (A/B/C).
+                  Phase 56 — trail window follows the unified toolbar
+                  (Shift+T cycles 5 → 10 → 20 → All frames). */}
               <PointIntelligenceLayer2D
                 points={points}
                 activeFrameIndex={activeFrameIndex}
@@ -318,6 +336,7 @@ export function Stage2DCanvas() {
                 colormap={colormap}
                 heatmapMin={hMin}
                 heatmapMax={hMax}
+                trailWindow={trailLength === 'all' ? Math.max(1, points.length) : trailLength}
                 trailWeights={
                   contourData?.linear2d && !contourData.linear2d.bothZeroed
                     ? { w1: contourData.linear2d.w1, w2: contourData.linear2d.w2 }
