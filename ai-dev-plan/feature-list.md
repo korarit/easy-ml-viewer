@@ -333,3 +333,7 @@ flowchart LR
 - **[Phase 54](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-54-point-intelligence-gradient-boosting.md)**: Point Intelligence Integration: Gradient Boosting Heavyweights (GBM, HistGBM, XGBoost, LightGBM, CatBoost)
 - **[Phase 55](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-55-point-intelligence-neural-pipeline-onnx.md)**: Point Intelligence Integration: Neural Networks, Pipelines & Universal ONNX (MLP, Scaled Pipelines, ONNX Latents)
 - **[Phase 56](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-56-point-intelligence-hardening-and-persistence.md)**: 2D Point Intelligence Unified Controls, .mlv Multi-Track Recording & Hardening
+
+
+### ส่วนที่ 10: Advanced Multi-Layout Video Export Studio (Phase 57)
+- **[Phase 57](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-57-advanced-video-export-studio.md)**: Advanced Multi-Layout Video Export Studio — 2D/3D Dual-Dimension, Embedded Why/What-If PiP, Independent Overrides (Theme, Speed, Angle) & Universal MP4/WebM Export

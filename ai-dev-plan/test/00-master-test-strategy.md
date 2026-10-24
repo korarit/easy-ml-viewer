@@ -1,6 +1,6 @@
-# Master Testing Strategy & 56-Phase Synchronized Quality Assurance Blueprint (`ai-dev-plan/test/`)
+# Master Testing Strategy & 57-Phase Synchronized Quality Assurance Blueprint (`ai-dev-plan/test/`)
 
-> **เป้าหมายสูงสุดของการทดสอบ (Testing Vision)**: รับประกันว่าระบบ **Easy ML Viewer** ในทุกๆ Phase ตั้งแต่ **Phase 01 ถึง Phase 56** มีชุดทดสอบแบบ **1-ต่อ-1 (`test-phase-01` $\leftrightarrow$ `phase-01` จนถึง `test-phase-56` $\leftrightarrow$ `phase-56`)** ที่ตรวจสอบครบทั้ง:
+> **เป้าหมายสูงสุดของการทดสอบ (Testing Vision)**: รับประกันว่าระบบ **Easy ML Viewer** ในทุกๆ Phase ตั้งแต่ **Phase 01 ถึง Phase 57** มีชุดทดสอบแบบ **1-ต่อ-1 (`test-phase-01` $\leftrightarrow$ `phase-01` จนถึง `test-phase-57` $\leftrightarrow$ `phase-57`)** ที่ตรวจสอบครบทั้ง:
 > 1. **ความถูกต้องทางคณิตศาสตร์ 100% (Mathematical & Internal Flow Parity)**
 > 2. **ความสมบูรณ์ของ UI Feature List & UX Flows (Component States, Keyboard Shortcuts, 2D/3D Dual-Mode Interactions)**
 > 3. **การควบคุมหน่วยความจำและ VRAM อย่างเข้มงวด (Memory Check Plan & Zero-Leak Guarantee)**
@@ -66,7 +66,7 @@ easy-ml-viewer/
 
 ---
 
-## 4. สารบัญแผนการทดสอบทั้ง 56 Phases (Synced 1-to-1 กับ `ai-dev-plan/dev/`)
+## 4. สารบัญแผนการทดสอบทั้ง 57 Phases (Synced 1-to-1 กับ `ai-dev-plan/dev/`)
 
 ### 🧱 Part 1: Base Platform, DDD Core, First Simple Model, 3D VCR Studio, What-If, `.mlv` & Compute Engine (Phases 01 - 17)
 
@@ -184,3 +184,11 @@ easy-ml-viewer/
 | **54** | **[test-phase-54-point-intelligence-gradient-boosting.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-54-point-intelligence-gradient-boosting.md)** | [phase-54](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-54-point-intelligence-gradient-boosting.md) | Functional Margin $y_i F(\mathbf{x}_i)$ 3-State Classification, TreeSHAP Push Vectors & Negative Gradient Pseudo-Residuals |
 | **55** | **[test-phase-55-point-intelligence-neural-pipeline-onnx.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-55-point-intelligence-neural-pipeline-onnx.md)** | [phase-55](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-55-point-intelligence-neural-pipeline-onnx.md) | Softmax Logit Gap ($\Delta z$), Raw $\leftrightarrow$ Scaled Space Bijective Mapping & Data Desert Hazard Detection |
 | **56** | **[test-phase-56-point-intelligence-hardening-and-persistence.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-56-point-intelligence-hardening-and-persistence.md)** | [phase-56](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-56-point-intelligence-hardening-and-persistence.md) | Global Keybindings (`T`, `R`, `E`, `H`), `.mlv` Point Intelligence Track Serialization Roundtrip, SVG Node Tree & 60 FPS Gate |
+
+---
+
+### 🎬 Part 10: Advanced Multi-Layout Video Export Studio Test Suites (Phase 57)
+
+| Test Phase | ไฟล์แผนการทดสอบ (`ai-dev-plan/test/`) | คู่ขนานกับไฟล์ Dev (`ai-dev-plan/dev/`) | จุดเน้นการทดสอบหลัก |
+| :---: | :--- | :--- | :--- |
+| **57** | **[test-phase-57-advanced-video-export-studio.md](file:///e:/easy-ml-viewer/ai-dev-plan/test/test-phase-57-advanced-video-export-studio.md)** | [phase-57](file:///e:/easy-ml-viewer/ai-dev-plan/dev/phase-57-advanced-video-export-studio.md) | State Isolation (2D/3D, Themes, Speeds, Angles), Split 70/30 & PiP Compositor, MP4 ftyp Validations & Zero-Drop 60 FPS |
