@@ -17,6 +17,7 @@ from app.presentation.endpoints.alias_endpoints import router as alias_router
 from app.presentation.endpoints.compute_endpoints import router as compute_router
 from app.presentation.endpoints.system_endpoints import router as system_router
 from app.presentation.endpoints.export_endpoints import router as export_router
+from app.presentation.endpoints.video_export_endpoints import router as video_export_router
 from app.presentation.endpoints.recording_endpoints import router as recording_router
 from app.presentation.endpoints.timeline_endpoints import router as timeline_router
 from app.presentation.endpoints.whatif_endpoints import router as whatif_router
@@ -37,4 +38,5 @@ api_router.include_router(recording_router)
 api_router.include_router(whatif_router)
 api_router.include_router(alias_router)
 api_router.include_router(export_router)
+api_router.include_router(video_export_router)
 api_router.include_router(compute_router)
