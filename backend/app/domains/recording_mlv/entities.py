@@ -46,6 +46,8 @@ class MlvPackageEntity(BaseModel):
     frames_track: MlvFramesTrackSection
     # Phase 48 — optional normalized 2D contour cache (None on legacy files).
     contour_2d_cache: dict | None = None
+    # Phase 56 — optional Point Intelligence 2D multi-track (None on legacy files).
+    point_intelligence_2d_track: dict | None = None
     model_config = {"arbitrary_types_allowed": True}
 
 

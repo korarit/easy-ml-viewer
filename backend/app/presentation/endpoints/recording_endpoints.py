@@ -134,6 +134,73 @@ async def get_mlv_contour_2d(session_id: str) -> dict[str, Any]:
     }
 
 
+@router.get("/{session_id}/point-intelligence-2d", summary="Phase 56: instant Point Intelligence 2D track from a loaded .mlv")
+async def get_mlv_point_intelligence_2d(session_id: str) -> dict[str, Any]:
+    """Return the baked ``point_intelligence_2d_track`` block (404 when legacy/absent).
+
+    Frame states ship columnar (float32 ND arrays via the shared codec) so a
+    1,000-row × 100-frame track stays under the 150 KB spec budget; clients
+    render trails / dual-rings / error lens / hexbins with zero recompute.
+    """
+    import numpy as np
+
+    from app.application.mlv_recording_orchestrator import _PREBAKED
+
+    try:
+        blob = _PREBAKED[session_id]
+    except KeyError:
+        from app.core.exceptions import DomainException as _DE
+
+        raise _DE(
+            code="MLV_SESSION_NOT_FOUND",
+            message=f"Prebaked .mlv session '{session_id}' not found — POST /api/v1/recordings/load first",
+            http_status=404,
+        ) from None
+    block = blob.get("point_intelligence_2d_track")
+    if not isinstance(block, dict) or not block:
+        from app.core.exceptions import DomainException as _DE
+
+        raise _DE(
+            code="MLV_NO_POINT_INTELLIGENCE",
+            message="This .mlv has no baked Point Intelligence track (legacy file) — recompute via /projection/point-intelligence-2d",
+            http_status=404,
+        ) from None
+
+    try:
+        scale = float(block.get("quant_scale", 1000.0) or 1000.0)
+    except (TypeError, ValueError):
+        scale = 1000.0
+
+    def _col(name: str, quantized: bool = False) -> list[float]:
+        try:
+            arr = np.asarray(block.get(name, [])).ravel()
+            if quantized and arr.dtype == np.int16:
+                arr = arr.astype(np.float32) / np.float32(scale)
+            else:
+                arr = arr.astype(np.float32)
+            return [float(v) for v in arr.tolist()]
+        except (TypeError, ValueError):
+            return []
+
+    grid = block.get("hexbin_grid", {}) or {}
+    return {
+        "session_id": session_id,
+        "flags": dict(block.get("flags", {}) or {}),
+        "hexbin_radius": float(block.get("hexbin_radius", 0.45) or 0.45),
+        "hexbin_grid": {"cells": list(grid.get("cells", []) or []), "truncated": bool(grid.get("truncated", False))},
+        "density_contours": list(block.get("density_contours", []) or []),
+        "contours_truncated": bool(block.get("contours_truncated", False)),
+        "n_frames": int(block.get("n_frames", 0) or 0),
+        "quant_scale": scale,
+        "point_x": _col("point_x", True),
+        "point_y": _col("point_y", True),
+        "point_actual": _col("point_actual"),
+        "point_pred": _col("point_pred"),
+        "point_residual": _col("point_residual", True),
+        "point_is_error": [int(v) for v in np.asarray(block.get("point_is_error", []), dtype=np.int64).ravel().tolist()],
+    }
+
+
 @router.put("/{session_id}/bookmarks", summary="Phase 15: update bookmarks + re-bake .mlv")
 async def rebake_mlv_bookmarks(
     session_id: str,

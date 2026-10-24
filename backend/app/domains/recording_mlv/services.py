@@ -70,6 +70,7 @@ def assemble_payload(
     frames_columns: dict[str, np.ndarray],
     top_k_contribs: np.ndarray | None = None,
     contour_2d_cache: dict[str, Any] | None = None,
+    point_intelligence_2d_track: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Assemble the msgpack-ready payload dict (ndarrays handled by the codec)."""
     contribs = (
@@ -87,6 +88,9 @@ def assemble_payload(
     # Phase 48 — optional 2D contour block (absent on legacy / 3D-only bakes).
     if isinstance(contour_2d_cache, dict) and contour_2d_cache:
         payload["contour_2d_cache"] = dict(contour_2d_cache)
+    # Phase 56 — optional Point Intelligence 2D multi-track (absent on legacy bakes).
+    if isinstance(point_intelligence_2d_track, dict) and point_intelligence_2d_track:
+        payload["point_intelligence_2d_track"] = dict(point_intelligence_2d_track)
     return payload
 
 
@@ -134,8 +138,24 @@ def split_payload(payload: dict[str, Any]) -> MlvPackageEntity:
             contour_out = restored if restored is not None else dict(contour_block)
         except Exception:
             contour_out = dict(contour_block)
+    # Phase 56 — keep the raw Point Intelligence 2D track (if any) so
+    # bake/load/rebake round-trips preserve it without recompute.
+    point_block = payload.get("point_intelligence_2d_track")
+    point_out: dict[str, Any] | None = None
+    if isinstance(point_block, dict) and point_block:
+        try:
+            from app.domains.recording_mlv.point_intel_baker import restore_point_intelligence_track
+
+            restored_pi = restore_point_intelligence_track(payload)
+            point_out = restored_pi if restored_pi is not None else dict(point_block)
+        except Exception:
+            point_out = dict(point_block)
     return MlvPackageEntity(
-        header=header, static_world=static_world, frames_track=frames, contour_2d_cache=contour_out
+        header=header,
+        static_world=static_world,
+        frames_track=frames,
+        contour_2d_cache=contour_out,
+        point_intelligence_2d_track=point_out,
     )
 
 

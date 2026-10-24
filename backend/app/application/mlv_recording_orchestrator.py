@@ -72,6 +72,10 @@ class MlvBakeRequest(BaseModel):
     # Phase 48 — optional raw Contour2DResponse JSON; baked into
     # ``contour_2d_cache`` for instant 2D (<0.1 s, no recompute on load).
     contour_2d: dict[str, Any] | None = Field(default=None)
+    # Phase 56 — optional raw Point Intelligence 2D payload
+    # (``point_intelligence`` response + trajectory columns); baked into
+    # ``point_intelligence_2d_track`` for 100% offline instant replay.
+    point_intelligence: dict[str, Any] | None = Field(default=None)
 
 
 class MlvRebakeBookmarksRequest(BaseModel):
@@ -271,7 +275,35 @@ class MlvRecordingOrchestrator:
                 contour_cache = bake_contour_2d_cache(req.contour_2d)
             except Exception:
                 contour_cache = None
-        payload = assemble_payload(header, static_world, frames_columns, top_k, contour_cache)
+        # Phase 56 — optional Point Intelligence 2D track (fail-safe).
+        point_track: dict[str, Any] | None = None
+        if isinstance(req.point_intelligence, dict) and req.point_intelligence:
+            try:
+                from app.domains.recording_mlv.point_intel_baker import bake_point_intelligence_track
+
+                pi = req.point_intelligence
+                hex_cells = pi.get("hexbin_cells", [])
+                if isinstance(hex_cells, list) and hex_cells and isinstance(hex_cells[0], dict):
+                    # Normalize backend HexbinCell2D (center_x/...) to baker cx/cy form.
+                    pass
+                point_track = bake_point_intelligence_track(
+                    flags=pi.get("flags"),
+                    hexbin_cells=hex_cells,
+                    density_contours=pi.get("density_contours", []),
+                    hex_radius=float(pi.get("hexbin_radius", 0.45) or 0.45),
+                    frame_x=pi.get("point_x", [p.world_x for p in scene.trajectory_points]),
+                    frame_y=pi.get("point_y", [p.world_y for p in scene.trajectory_points]),
+                    frame_actual=pi.get(
+                        "point_actual",
+                        [p.raw_z_actual if p.raw_z_actual is not None else p.raw_z_pred for p in scene.trajectory_points],
+                    ),
+                    frame_pred=pi.get("point_pred", [p.raw_z_pred for p in scene.trajectory_points]),
+                    frame_residual=pi.get("point_residual", [p.residual_error or 0.0 for p in scene.trajectory_points]),
+                    frame_is_error=pi.get("point_is_error"),
+                )
+            except Exception:
+                point_track = None
+        payload = assemble_payload(header, static_world, frames_columns, top_k, contour_cache, point_track)
         try:
             blob = encode_mlv_package(payload, compression_level=int(req.compression_level))
         finally:
@@ -310,12 +342,14 @@ class MlvRecordingOrchestrator:
         )
         ft = payload.get("frames_track", {})
         contour_block = payload.get("contour_2d_cache")
+        point_block = payload.get("point_intelligence_2d_track")
         _remember_prebaked(
             sid,
             {
                 "entity": entity,
                 "package": package,
                 "contour_2d_cache": dict(contour_block) if isinstance(contour_block, dict) else None,
+                "point_intelligence_2d_track": dict(point_block) if isinstance(point_block, dict) else None,
                 "raw_bytes": bytes(file_bytes),
                 "positions_world": np.asarray(
                     ft.get("positions_world", np.zeros((package.header.total_frames, 3), dtype=np.float32)),
@@ -359,6 +393,7 @@ class MlvRecordingOrchestrator:
         )
         stored_top_k = stored_top_k if stored_top_k.size else None
         stored_contour = blob.get("contour_2d_cache")
+        stored_point = blob.get("point_intelligence_2d_track")
         payload = assemble_payload(
             package.header,
             {
@@ -381,6 +416,7 @@ class MlvRecordingOrchestrator:
             ),
             stored_top_k,
             dict(stored_contour) if isinstance(stored_contour, dict) else None,
+            dict(stored_point) if isinstance(stored_point, dict) else None,
         )
         try:
             out = encode_mlv_package(payload)
@@ -422,4 +458,21 @@ def prebaked_to_response(entity: PrebakedMlvSessionEntity) -> dict[str, Any]:
             body["contour_2d_summary"] = {"has_contour_2d": False}
     except Exception:
         body["contour_2d_summary"] = {"has_contour_2d": False}
+    # Phase 56 — point-intelligence summary for the load path.
+    try:
+        pi = _PREBAKED.get(entity.session_id, {}).get("point_intelligence_2d_track")
+        if isinstance(pi, dict) and pi:
+            grid = pi.get("hexbin_grid", {}) or {}
+            cells = grid.get("cells", []) if isinstance(grid, dict) else []
+            body["point_intelligence_summary"] = {
+                "has_point_intelligence": True,
+                "n_frames": int(pi.get("n_frames", 0) or 0),
+                "n_hexbin_cells": len(cells) if isinstance(cells, list) else 0,
+                "n_density_levels": len(pi.get("density_contours", []) or []),
+                "flags": pi.get("flags", {}),
+            }
+        else:
+            body["point_intelligence_summary"] = {"has_point_intelligence": False}
+    except Exception:
+        body["point_intelligence_summary"] = {"has_point_intelligence": False}
     return body
