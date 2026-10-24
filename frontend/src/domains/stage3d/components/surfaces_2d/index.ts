@@ -139,6 +139,36 @@ export {
   bayesSpokeToSvg,
 } from './probabilisticPointIntel2dMath';
 export type { ClassGaussian2D } from './probabilisticPointIntel2dMath';
+export { ManhattanStepTrail2D } from './ManhattanStepTrail2D';
+export { ForestConsensusRing2D } from './ForestConsensusRing2D';
+export type { ConsensusRingDatum } from './ForestConsensusRing2D';
+export { AdaBoostWeightHalo2D } from './AdaBoostWeightHalo2D';
+export type { AdaBoostHaloDatum } from './AdaBoostWeightHalo2D';
+export { LeafMinoritySpoke2D } from './LeafMinoritySpoke2D';
+export type { LeafMinoritySpoke } from './LeafMinoritySpoke2D';
+export { LeafBoundedHexbin2D } from './LeafBoundedHexbin2D';
+export { TreesPointIntelOverlays2D } from './TreesPointIntelOverlays2D';
+export {
+  CONSENSUS_SOLID_COLOR,
+  CONSENSUS_FUZZY_COLOR,
+  ADABOOST_HALO_COLOR,
+  LEAF_MINORITY_COLOR,
+  LEAF_PURE_COLOR,
+  LEAF_MIXED_COLOR,
+  CONSENSUS_FUZZY_THRESHOLD,
+  manhattanElbow,
+  manhattanLength,
+  manhattanTrailPath,
+  forestAgreement,
+  isFuzzyConsensus,
+  consensusThickness,
+  adaboostRingScale,
+  isLeafMinority,
+  stepwiseResidual,
+  hexPurity,
+  adaboostHaloRadius,
+  treeSpokeToSvg,
+} from './treesPointIntel2dMath';
 export { MlpNeuronHyperplanes2D } from './MlpNeuronHyperplanes2D';
 export { PipelineSpaceToggle2D } from './PipelineSpaceToggle2D';
 export { OnnxLatentManifold2D } from './OnnxLatentManifold2D';
