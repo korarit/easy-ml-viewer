@@ -10,6 +10,7 @@ import { PointIntelligenceLayer2D } from './surfaces_2d/PointIntelligenceLayer2D
 import { LinearPointIntelOverlays2D } from './surfaces_2d/LinearPointIntelOverlays2D';
 import { DistancePointIntelOverlays2D } from './surfaces_2d/DistancePointIntelOverlays2D';
 import { ProbabilisticPointIntelOverlays2D } from './surfaces_2d/ProbabilisticPointIntelOverlays2D';
+import { TreesPointIntelOverlays2D } from './surfaces_2d/TreesPointIntelOverlays2D';
 import { LinearOverlays2D } from './surfaces_2d/LinearOverlays2D';
 import { DistanceOverlays2D } from './surfaces_2d/DistanceOverlays2D';
 import { ProbabilisticOverlays2D } from './surfaces_2d/ProbabilisticOverlays2D';
@@ -359,6 +360,21 @@ export function Stage2DCanvas() {
                     hexbinCells={pointIntel?.hexbinCells ?? []}
                     xRangeRaw={contourData.xRangeRaw}
                     yRangeRaw={contourData.yRangeRaw}
+                    classColor={classColorFor}
+                  />
+                )}
+              {/* Phase 53 — tree leaf hops, consensus rings, minority spokes, leaf hexbins. */}
+              {contourData.trees2d &&
+                (contourData.trees2d.family === 'decision_tree' ||
+                  contourData.trees2d.family === 'random_forest' ||
+                  contourData.trees2d.family === 'extra_trees' ||
+                  contourData.trees2d.family === 'adaboost') && (
+                  <TreesPointIntelOverlays2D
+                    trees2d={contourData.trees2d}
+                    points={points}
+                    activeFrameIndex={activeFrameIndex}
+                    hexbinCells={pointIntel?.hexbinCells ?? []}
+                    isClassification={isClassification}
                     classColor={classColorFor}
                   />
                 )}
