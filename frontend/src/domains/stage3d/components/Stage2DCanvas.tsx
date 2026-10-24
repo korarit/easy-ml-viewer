@@ -9,6 +9,7 @@ import { PointDisplayToolbar2D } from './surfaces_2d/PointDisplayToolbar2D';
 import { PointIntelligenceLayer2D } from './surfaces_2d/PointIntelligenceLayer2D';
 import { LinearPointIntelOverlays2D } from './surfaces_2d/LinearPointIntelOverlays2D';
 import { DistancePointIntelOverlays2D } from './surfaces_2d/DistancePointIntelOverlays2D';
+import { ProbabilisticPointIntelOverlays2D } from './surfaces_2d/ProbabilisticPointIntelOverlays2D';
 import { LinearOverlays2D } from './surfaces_2d/LinearOverlays2D';
 import { DistanceOverlays2D } from './surfaces_2d/DistanceOverlays2D';
 import { ProbabilisticOverlays2D } from './surfaces_2d/ProbabilisticOverlays2D';
@@ -345,6 +346,22 @@ export function Stage2DCanvas() {
                   classColor={classColorFor}
                 />
               )}
+              {/* Phase 52 — Gaussian families only; discrete NB carries no
+                  (μ, Σ) params so the layer honestly renders nothing there. */}
+              {contourData?.probabilistic2d &&
+                (contourData.probabilistic2d.family === 'gnb' ||
+                  contourData.probabilistic2d.family === 'lda' ||
+                  contourData.probabilistic2d.family === 'qda') && (
+                  <ProbabilisticPointIntelOverlays2D
+                    prob2d={contourData.probabilistic2d}
+                    points={points}
+                    activeFrameIndex={activeFrameIndex}
+                    hexbinCells={pointIntel?.hexbinCells ?? []}
+                    xRangeRaw={contourData.xRangeRaw}
+                    yRangeRaw={contourData.yRangeRaw}
+                    classColor={classColorFor}
+                  />
+                )}
               <WhatIfDisplacementVector2D />
               <ActiveDataPointReticle2D points={points} activeFrameIndex={activeFrameIndex} />
               {/* Precision rulers (raw values, inside the frame to avoid clipping) */}

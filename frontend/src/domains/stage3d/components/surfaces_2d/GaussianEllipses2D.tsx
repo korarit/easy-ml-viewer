@@ -29,7 +29,13 @@ export function GaussianEllipses2D({
       {ellipses.map((e) => {
         const color = ellipseColor(e.classIndex);
         const [cx, cy] = e.centerWorld;
-        const [rx, ry] = e.radiiWorld1Sigma;
+        // Phase-44 stores radii ASCENDING [minor, major] with rotationRad =
+        // the MAJOR-axis direction; rotate(−θ) maps local-x onto that
+        // direction, so local-x must carry the MAJOR radius (verified: the
+        // unswapped mapping transposes rotated LDA/QDA ellipses).
+        const [rMinor, rMajor] = e.radiiWorld1Sigma;
+        const rx = rMajor;
+        const ry = rMinor;
         const rotDeg = (-e.rotationRad * 180) / Math.PI;
         const label = e.label === null || e.label === undefined ? `#${e.classIndex}` : String(e.label);
         return (
