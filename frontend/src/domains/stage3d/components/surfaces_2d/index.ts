@@ -111,6 +111,34 @@ export {
   spokeToSvg,
 } from './distancePointIntel2dMath';
 export type { KnnNeighborPoint, VoteArcSegment, SvrSlackSpoke } from './distancePointIntel2dMath';
+export { BayesEntropyCometTrail2D } from './BayesEntropyCometTrail2D';
+export { PosteriorConfidenceRing2D } from './PosteriorConfidenceRing2D';
+export type { PosteriorRingDatum } from './PosteriorConfidenceRing2D';
+export { CentroidAttractorSpoke2D } from './CentroidAttractorSpoke2D';
+export type { CentroidSpoke } from './CentroidAttractorSpoke2D';
+export { GaussianDivergenceHexbin2D } from './GaussianDivergenceHexbin2D';
+export { ProbabilisticPointIntelOverlays2D } from './ProbabilisticPointIntelOverlays2D';
+export {
+  ENTROPY_MAGENTA,
+  SPOKE_TRUE_COLOR,
+  SPOKE_PRED_COLOR,
+  DIVERGENCE_OVER_COLOR,
+  DIVERGENCE_UNDER_COLOR,
+  shannonEntropy,
+  covFromStdRotation,
+  gaussianPosterior2D,
+  posteriorRingScale,
+  isAmbiguous,
+  entropyTrailColor,
+  mahalanobis2D,
+  gaussianMixturePdf,
+  logLikelihoodRatio,
+  worldToRaw,
+  hexAreaRaw,
+  confidenceRingRadius,
+  bayesSpokeToSvg,
+} from './probabilisticPointIntel2dMath';
+export type { ClassGaussian2D } from './probabilisticPointIntel2dMath';
 export { MlpNeuronHyperplanes2D } from './MlpNeuronHyperplanes2D';
 export { PipelineSpaceToggle2D } from './PipelineSpaceToggle2D';
 export { OnnxLatentManifold2D } from './OnnxLatentManifold2D';
