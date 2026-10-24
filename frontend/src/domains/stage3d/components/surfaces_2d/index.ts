@@ -138,6 +138,40 @@ export {
   confidenceRingRadius,
   bayesSpokeToSvg,
 } from './probabilisticPointIntel2dMath';
+export { BoostingShapPushTrail2D } from './BoostingShapPushTrail2D';
+export { FunctionalMarginRing2D } from './FunctionalMarginRing2D';
+export type { MarginRingDatum } from './FunctionalMarginRing2D';
+export { PseudoResidualSpoke2D } from './PseudoResidualSpoke2D';
+export type { PseudoResidualSpoke } from './PseudoResidualSpoke2D';
+export { QuantizedBinHexbin2D } from './QuantizedBinHexbin2D';
+export { BoostingPointIntelOverlays2D } from './BoostingPointIntelOverlays2D';
+export {
+  MARGIN_SAFE_COLOR,
+  MARGIN_CRITICAL_COLOR,
+  MARGIN_NEGATIVE_COLOR,
+  PUSH_TRAIL_COLOR,
+  GRAD_UP_COLOR,
+  GRAD_DOWN_COLOR,
+  QUANT_HOT_COLOR,
+  QUANT_TRAFFIC_COLOR,
+  MARGIN_SAFE_THRESHOLD,
+  SPOKE_MAX_WORLD,
+  PUSH_WORLD_SCALE,
+  PUSH_WALK_MAX_LEN,
+  cumulativePush,
+  pushStepMagnitudes,
+  pushWorldScale,
+  toSignedLabel,
+  functionalMargin,
+  marginStatus,
+  pseudoResidualLS,
+  pseudoResidualLogloss,
+  spokeLengths,
+  quantizeToBin,
+  quantizedCellId,
+  boostSpokeToSvg,
+} from './boostingPointIntel2dMath';
+export type { MarginStatus } from './boostingPointIntel2dMath';
 export type { ClassGaussian2D } from './probabilisticPointIntel2dMath';
 export { ManhattanStepTrail2D } from './ManhattanStepTrail2D';
 export { ForestConsensusRing2D } from './ForestConsensusRing2D';
